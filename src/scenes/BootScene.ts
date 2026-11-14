@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { ColorPalette } from '../gfx/ColorPalette';
 import { generateCloudTexture } from '../gfx/CloudShader';
 import { GameState } from '../core/GameState';
+import { CloudBand, WindForecast } from '../core/AuctionEngine';
+import { CondensatePocket, GRID_TOP_Y, GRID_BOTTOM_Y, GRID_LAYERS } from '../core/CloudGrid';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -49,16 +51,97 @@ export class BootScene extends Phaser.Scene {
   }
 
   public create(): void {
-    // Fade out and transition smoothly to AuctionScene (or SkyHarvestScene if band already active)
+    // Fade out and transition directly to SkyHarvestScene with starter cloud band
     this.cameras.main.fadeOut(400, 15, 23, 42);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-      const activeBand = GameState.getInstance().getActiveCloudBand();
-      if (activeBand) {
-        this.scene.start('SkyHarvestScene');
-      } else {
-        this.scene.start('AuctionScene');
+      let activeBand = GameState.getInstance().getActiveCloudBand();
+      if (!activeBand) {
+        activeBand = this.createStarterCloudBand();
+        GameState.getInstance().setActiveCloudBand(activeBand);
       }
+      this.scene.start('SkyHarvestScene', { cloudBand: activeBand });
     });
+  }
+
+  private createStarterCloudBand(): CloudBand {
+    const layerHeight = (GRID_BOTTOM_Y - GRID_TOP_Y) / GRID_LAYERS;
+    const pockets: CondensatePocket[] = [
+      {
+        id: 'pocket-starter-1',
+        name: 'Stratum Nimbus I - Frosttasche',
+        zone: 'high',
+        resourceType: 'frost',
+        baseX: 180,
+        baseY: GRID_TOP_Y + (1 + 0.5) * layerHeight,
+        x: 180,
+        y: GRID_TOP_Y + (1 + 0.5) * layerHeight,
+        radius: 28,
+        maxCapacity: 120,
+        currentVolume: 120,
+        isDepleted: false,
+        valuePerUnit: 25,
+      },
+      {
+        id: 'pocket-starter-2',
+        name: 'Stratum Nimbus I - Skywater-Quelle',
+        zone: 'mid',
+        resourceType: 'skywater',
+        baseX: 360,
+        baseY: GRID_TOP_Y + (5 + 0.5) * layerHeight,
+        x: 360,
+        y: GRID_TOP_Y + (5 + 0.5) * layerHeight,
+        radius: 32,
+        maxCapacity: 150,
+        currentVolume: 150,
+        isDepleted: false,
+        valuePerUnit: 10,
+      },
+      {
+        id: 'pocket-starter-3',
+        name: 'Stratum Nimbus I - Gewitterkern',
+        zone: 'low',
+        resourceType: 'storm',
+        baseX: 270,
+        baseY: GRID_TOP_Y + (9 + 0.5) * layerHeight,
+        x: 270,
+        y: GRID_TOP_Y + (9 + 0.5) * layerHeight,
+        radius: 34,
+        maxCapacity: 180,
+        currentVolume: 180,
+        isDepleted: false,
+        valuePerUnit: 18,
+      },
+    ];
+
+    const forecast: WindForecast[] = [
+      { week: 1, direction: 'east', speed: 25, turbulence: 'calm' },
+      { week: 2, direction: 'east', speed: 30, turbulence: 'moderate' },
+      { week: 3, direction: 'west', speed: 20, turbulence: 'calm' },
+      { week: 4, direction: 'west', speed: 35, turbulence: 'calm' },
+    ];
+
+    return {
+      id: 'band-starter-0',
+      name: 'Stratum Nimbus I',
+      zone: 'mid',
+      primaryResource: 'skywater',
+      estimatedSize: 'M',
+      baseValue: 180,
+      weatherForecast: forecast,
+      initialHint: 'auction.hints.midCalmFlow',
+      actualData: {
+        density: 0.45,
+        pocketsCount: 3,
+        depthLayer: 5,
+        approximateX: 270,
+        quality: 2,
+        hasAurora: false,
+        pockets,
+      },
+      round: 1,
+      winner: 'player',
+      winningBid: 0,
+    };
   }
 
   private generateProceduralAssets(): void {

@@ -12,22 +12,40 @@
     "resume": "Resume",
     "lang": "Language",
     "auction": "Auction",
-    "help": "HELP / TUTORIAL",
+    "help": "HELP",
     "radar": "RADAR",
     "market": "MARKET"
   },
   "zones": {
+    "zone": "Zone",
     "high": "High Zone",
+    "highShort": "High",
+    "highFull": "HIGH ZONE (FROST CRYSTALS)",
     "highDesc": "Crystalline & Thin",
     "mid": "Mid Zone",
+    "midShort": "Mid",
+    "midFull": "MID ZONE (SKYWATER)",
     "midDesc": "Balanced & Gentle",
     "low": "Low Zone",
+    "lowShort": "Low",
+    "lowFull": "LOW ZONE (STORM CHARGE)",
     "lowDesc": "Stormy & Dense",
     "resourceHigh": "Frost Crystals",
     "resourceMid": "Skywater",
     "resourceLow": "Storm Charge"
   },
+  "harvest": {
+    "startHint": "👇 Drag drill probe down into the clouds to harvest!",
+    "harborTitle": "SKY HARBOR & DOCK",
+    "starterBandName": "Stratum Nimbus I",
+    "docked": "Docked",
+    "drifting": "Drifting",
+    "harvesting": "Harvesting",
+    "idle": "Ready"
+  },
   "tools": {
+    "head": "Head:",
+    "key": "Key",
     "scan": "Scan",
     "scanDesc": "Wind Sensor & Echo Drone",
     "drill": "Drill",
@@ -47,6 +65,12 @@
     "charge": "Charge Spike",
     "chargeDesc": "Low Zone • Storm Charge"
   },
+  "sonar": {
+    "veryHot": "VERY HOT! 🔥",
+    "warmer": "WARMER! ⚡",
+    "colder": "COLD... ❄",
+    "signalWeak": "Weak signal"
+  },
   "scan": {
     "hot": "VERY HOT! 🔥 Target in range",
     "warmer": "WARMER! ⚡ Cloud reading rising",
@@ -61,7 +85,14 @@
     "windSpeed": "Wind Speed",
     "direction": "Direction",
     "east": "Eastbound",
-    "west": "Westbound"
+    "west": "Westbound",
+    "expandHint": "Expand Radar & Flow Forecast",
+    "collapseHint": "Minimize Radar",
+    "stableWindow": "Forecast window stable. Drift returns to exact starting position every 4 weeks.",
+    "baseValueLabel": "Base",
+    "switchHead": "Switch drill head:",
+    "sonarPing": "Wind sensor ping:",
+    "driftSpeedUnits": "Cols/Week"
   },
   "market": {
     "title": "Harbor Exchange",
@@ -70,8 +101,16 @@
     "evaporationRate": "Evaporation: 2%/week",
     "councilDossier": "Sky-Council Dossier",
     "shares": "Council Shares",
+    "sharesShort": "Shares",
     "rivals": "Rivals",
-    "activityLog": "Logbook"
+    "activityLog": "Logbook",
+    "expandHint": "Expand Market Prices & Council Dossier",
+    "collapseHint": "Minimize Market",
+    "priceTrends": "Price Trends",
+    "antiHoarding": "Anti-Hoarding Protection",
+    "councilRule": "30 Council shares determine supremacy in the Sky-Council.",
+    "playerYou": "Player (You)",
+    "weeksSchedule": "Weeks 4, 8, 12"
   },
   "rivals": {
     "daredevil": "The Daredevil",
@@ -104,6 +143,24 @@
     "outbid": "OUTBID",
     "youWon": "You won this cloud band!",
     "rivalWon": "Awarded to rival:",
+    "bundleAuction": "BUNDLE AUCTION",
+    "yourBand": "YOUR BAND",
+    "pocketsCountLabel": "Pockets",
+    "awardLabel": "Winning Bid:",
+    "auroraFound": "✨ AURORA DISCOVERY",
+    "returnToHarvest": "Back to Harvest",
+    "startHarvestingNow": "🚀 HARVEST NOW",
+    "aiRivalsTitle": "AI RIVALS (FAIR AUTONOMOUS BIDDERS)",
+    "revealTitle": "REVEAL",
+    "youWonTitle": "🎉 YOU WON!",
+    "awardedTo": "AWARDED TO:",
+    "auctionEndedTitle": "AUCTION CONCLUDED • YOUR SKY LICENSES",
+    "noScansBought": "No extra scans purchased. Bid using wind forecast & initial clue.",
+    "densityLabel": "Density",
+    "depthLabel": "Depth",
+    "layerLabel": "Layer",
+    "qualityLabel": "Quality",
+    "activeBadge": "ACTIVE",
     "scans": {
       "windSensor": "Wind Sensor",
       "windSensorDesc": "Density & Pockets",
@@ -155,10 +212,17 @@
     "close": "Close (ESC)",
     "step": "Step",
     "of": "of",
+    "shortcutHint": "[←] Back • [→] Next • [ESC] Close",
     "step1": {
       "title": "Welcome to the Skies!",
       "lead": "As a Cloud Harvester, you command a floating platform above the cloud harbor.",
       "text": "The atmosphere is divided into three distinct altitude strata:",
+      "highLead": "High Zone:",
+      "highSub": "Frost Crystals (Thin clouds, 25 CR/unit)",
+      "midLead": "Mid Zone:",
+      "midSub": "Skywater (Gentle moisture, 10 CR/unit)",
+      "lowLead": "Low Zone:",
+      "lowSub": "Storm Charge (Dense storms, 18 CR/unit)",
       "zoneHigh": "❄️ High Zone (Frost Crystals): Thin clouds, pure ice, highest base value (25 CR).",
       "zoneMid": "💧 Mid Zone (Skywater): Balanced moisture, stable extractable volume (10 CR).",
       "zoneLow": "⚡ Low Zone (Storm Charge): Dense storm clouds, high volatility (18 CR)."
@@ -167,12 +231,16 @@
       "title": "Steering Probe & Drill Head",
       "lead": "Guide the probe head by clicking or touching directly.",
       "text": "Click below the platform and drag downwards into the cloud banks. The probe automatically carves a clear borehole channel through which you can glide freely later.",
+      "instruction1": "Click below the platform and drag the pointer downwards.",
+      "instruction2": "The probe carves a permanent borehole channel.",
+      "instruction3": "Inside carved channels, the probe glides at full 380 px/s!",
       "tip": "💡 The braided suspension cable reacts with realistic catenary sag and turbulence."
     },
     "step3": {
       "title": "Matching Drill Heads",
       "lead": "Always align your drill head with the current altitude zone!",
       "text": "Quick-switch heads via keys [Q], [W], [E] or using the bottom dock:",
+      "keyPrefix": "Key",
       "headIce": "❄️ Ice Drill [Key Q]: Slices effortlessly through frozen high strata.",
       "headFog": "💧 Fog Scoop [Key W]: Draws in moist mid-stratum vapor droplets.",
       "headCharge": "⚡ Charge Needle [Key E]: Channels and grounds deep storm static.",
@@ -182,12 +250,21 @@
       "title": "Harvesting Condensate Pockets",
       "lead": "Locate and dock onto glowing condensate reservoirs.",
       "text": "Guide the probe tip into a glowing pocket. It locks into center with an elastic latch. Crystalline droplets travel up the cable into your harvester tank.",
+      "feature1Label": "Automatic Docking:",
+      "feature1Value": "Elastic Latch",
+      "feature2Label": "Extraction Flow:",
+      "feature2Value": "Beads on Cable",
+      "feature3Label": "Harvester Tank Capacity:",
+      "feature3Value": "100 Units",
       "tip": "💡 Tank full? Connect logistics pipes or sell at the Harbor Market to bank Credits (CR)."
     },
     "step5": {
       "title": "Wind Sensor Sonar Scan",
       "lead": "Use the sonar when valuable pockets are shrouded in dense haze.",
       "text": "Select tool slot 1 [Key 1] for the Wind Sensor. Click anywhere in the cloud layers to emit an acoustic sonar wave. The hot/cold telemetry leads the way:",
+      "hotDesc": "< 70px • Pocket directly at probe tip!",
+      "warmerDesc": "< 160px • Signal intensity rising",
+      "colderDesc": "Outside sonar range",
       "signalHot": "🔥 HOT: Pocket directly in harvesting range!",
       "signalWarmer": "⚡ WARMER: Strong condensate signal detected nearby.",
       "signalColder": "❄️ COLD: Weak echo, scan another altitude layer."
@@ -196,6 +273,8 @@
       "title": "Cloud Drift & Sky-Council",
       "lead": "The sky is never static – it sways on a 4-week pendulum cycle!",
       "text": "Cloud bands drift smoothly east and west, returning to their origin every 4 weeks. Click [🔨 AUCTION] in the header to bid against AI rivals for prime bands and earn Sky-Council shares!",
+      "auctionHeader": "Auction & Sky-Council:",
+      "auctionText": "Click [🔨 AUCTION] in the header anytime to place bids on 6 procedural cloud bands. AI rivals bid against you with distinct personalities!",
       "tip": "🌟 Rule the cloud seas and build your harvesting syndicate. Good luck, Harvester!"
     }
   }

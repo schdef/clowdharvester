@@ -12,22 +12,40 @@
     "resume": "Weiter",
     "lang": "Sprache",
     "auction": "Auktion",
-    "help": "HILFE / TUTORIAL",
+    "help": "HILFE",
     "radar": "RADAR",
     "market": "BÖRSE"
   },
   "zones": {
+    "zone": "Zone",
     "high": "Hochzone",
+    "highShort": "Hoch",
+    "highFull": "HOCHZONE (FROSTKRISTALLE)",
     "highDesc": "Kristallin & Dünn",
     "mid": "Mittelzone",
+    "midShort": "Mittel",
+    "midFull": "MITTELZONE (SKYWATER)",
     "midDesc": "Ausgeglichen & Sanft",
     "low": "Tiefzone",
+    "lowShort": "Tief",
+    "lowFull": "TIEFZONE (STURMLADUNG)",
     "lowDesc": "Stürmisch & Dicht",
     "resourceHigh": "Frostkristalle",
     "resourceMid": "Skywater",
     "resourceLow": "Sturmladung"
   },
+  "harvest": {
+    "startHint": "👇 Ziehe den Bohrkopf nach unten zum Schürfen!",
+    "harborTitle": "HIMMELSHAFEN & ANLEGESTELLE",
+    "starterBandName": "Stratum Nimbus I",
+    "docked": "Gedockt",
+    "drifting": "Driftend",
+    "harvesting": "Fördernd",
+    "idle": "Bereit"
+  },
   "tools": {
+    "head": "Kopf:",
+    "key": "Taste",
     "scan": "Scan",
     "scanDesc": "Windfühler & Echodrohne",
     "drill": "Bohrkopf",
@@ -47,6 +65,12 @@
     "charge": "Ladungsspitze",
     "chargeDesc": "Tiefzone • Sturmladung"
   },
+  "sonar": {
+    "veryHot": "SEHR HEISS! 🔥",
+    "warmer": "WÄRMER! ⚡",
+    "colder": "KALT... ❄",
+    "signalWeak": "Signal schwach"
+  },
   "scan": {
     "hot": "SEHR HEISS! 🔥 In Reichweite",
     "warmer": "WÄRMER! ⚡ Wolkentemperatur steigt",
@@ -61,7 +85,14 @@
     "windSpeed": "Windtempo",
     "direction": "Richtung",
     "east": "Ostwärts",
-    "west": "Westwärts"
+    "west": "Westwärts",
+    "expandHint": "Radar & Strömungsprognose ausklappen",
+    "collapseHint": "Radar minimieren",
+    "stableWindow": "Vorhersage-Fenster stabil. Drift kehrt alle 4 Wochen exakt zur Ursprungsposition zurück.",
+    "baseValueLabel": "Basis",
+    "switchHead": "Bohrkopf wechseln:",
+    "sonarPing": "Windfühler-Ping:",
+    "driftSpeedUnits": "Sp./Woche"
   },
   "market": {
     "title": "Hafen-Börse",
@@ -70,8 +101,16 @@
     "evaporationRate": "Verdunstung: 2%/Woche",
     "councilDossier": "Sky-Council Dossier",
     "shares": "Ratsanteile",
+    "sharesShort": "Ratsant.",
     "rivals": "Rivalen",
-    "activityLog": "Logbuch"
+    "activityLog": "Logbuch",
+    "expandHint": "Börsenkurse & Ratsdossier ausklappen",
+    "collapseHint": "Markt minimieren",
+    "priceTrends": "Kurstrends",
+    "antiHoarding": "Schutz vor Hortung",
+    "councilRule": "30 Ratsanteile bestimmen die Vorherrschaft im Sky-Council.",
+    "playerYou": "Spieler (Du)",
+    "weeksSchedule": "Woche 4, 8, 12"
   },
   "rivals": {
     "daredevil": "Der Draufgänger",
@@ -104,6 +143,24 @@
     "outbid": "ÜBERBOTEN",
     "youWon": "Du hast dieses Wolkenband ersteigert!",
     "rivalWon": "Zuschlag an Rivale:",
+    "bundleAuction": "BÜNDEL-AUKTION",
+    "yourBand": "DEIN BAND",
+    "pocketsCountLabel": "Taschen",
+    "awardLabel": "Zuschlag:",
+    "auroraFound": "✨ AURORA-FUND",
+    "returnToHarvest": "Zurück zum Schürfen",
+    "startHarvestingNow": "🚀 JETZT SCHÜRFEN",
+    "aiRivalsTitle": "KI-RIVALEN (FAIRE AUTONOME BIETER)",
+    "revealTitle": "ENTHÜLLUNG",
+    "youWonTitle": "🎉 DU HAST GEWONNEN!",
+    "awardedTo": "ZUSCHLAG:",
+    "auctionEndedTitle": "AUKTION BEENDET • DEINE HIMMELSLIZENZEN",
+    "noScansBought": "Keine zusätzlichen Scans gekauft. Biete nach Windradar & Vorab-Hinweis.",
+    "densityLabel": "Dichte",
+    "depthLabel": "Tiefe",
+    "layerLabel": "Schicht",
+    "qualityLabel": "Güte",
+    "activeBadge": "AKTIV",
     "scans": {
       "windSensor": "Windfühler",
       "windSensorDesc": "Dichte & Taschen",
@@ -155,10 +212,17 @@
     "close": "Schließen (ESC)",
     "step": "Schritt",
     "of": "von",
+    "shortcutHint": "[←] Zurück • [→] Weiter • [ESC] Schließen",
     "step1": {
       "title": "Willkommen im Himmel!",
       "lead": "Als Wolkenernter steuerst du eine schwebende Plattform über dem Himmelshafen.",
       "text": "Die Atmosphäre teilt sich in drei einzigartige Höhenzonen:",
+      "highLead": "Hochzone:",
+      "highSub": "Frostkristalle (Dünne Wolken, 25 CR/Einheit)",
+      "midLead": "Mittelzone:",
+      "midSub": "Skywater (Sanfte Feuchte, 10 CR/Einheit)",
+      "lowLead": "Tiefzone:",
+      "lowSub": "Sturmladung (Dichte Gewitter, 18 CR/Einheit)",
       "zoneHigh": "❄️ Hochzone (Frostkristalle): Dünne Wolken, reines Eis, höchster Grundwert (25 CR).",
       "zoneMid": "💧 Mittelzone (Skywater): Ausgeglichene Feuchte, stabiles Volumen (10 CR).",
       "zoneLow": "⚡ Tiefzone (Sturmladung): Dichte Gewitterwolken, hohe Volatilität (18 CR)."
@@ -167,12 +231,16 @@
       "title": "Sonde & Bohrkopf steuern",
       "lead": "Steuere die Sonde direkt durch Klicken oder Touch.",
       "text": "Klicke unterhalb der Plattform und ziehe den Bohrkopf nach unten in die Wolkenschichten. Die Sonde schneidet automatisch eine Kanalspur (Bohrloch) frei, durch die du später ohne Widerstand gleiten kannst.",
+      "instruction1": "Klicke unterhalb der Plattform und ziehe den Zeiger nach unten.",
+      "instruction2": "Die Sonde schneidet eine permanente Kanalspur (Bohrloch) frei.",
+      "instruction3": "In freigeschnittenen Kanälen gleitet die Sonde mit vollen 380 px/s!",
       "tip": "💡 Das flexible Seil federt Böen mit realistischer Kettenkurven-Physik ab."
     },
     "step3": {
       "title": "Bohrköpfe passend wechseln",
       "lead": "Passe deinen Bohrkopf immer an die aktuelle Zone an!",
       "text": "Wechsle blitzschnell mit Tasten [Q], [W], [E] oder über das Daumen-Dock:",
+      "keyPrefix": "Taste",
       "headIce": "❄️ Eisbohrer [Taste Q]: Schneidet mühelos durch gefrorene Hochzonen.",
       "headFog": "💧 Nebelfänger [Taste W]: Zieht feuchte Mittelzonen-Tröpfchen an.",
       "headCharge": "⚡ Ladungsspitze [Taste E]: Leitet elektrische Tiefzonen-Entladungen ab.",
@@ -182,12 +250,21 @@
       "title": "Kondensattaschen ernten",
       "lead": "Finde und docke an leuchtende Kondensat-Reservoirs an.",
       "text": "Steuere die Sonde in eine leuchtende Tasche. Sie dockt mit sanftem Klick ein. Glitzernde Kondensattropfen wandern am Förderseil nach oben in deinen Vorratstank.",
+      "feature1Label": "Automatische Arretierung:",
+      "feature1Value": "Elastischer Dock",
+      "feature2Label": "Förder-Dynamik:",
+      "feature2Value": "Perlen am Seil",
+      "feature3Label": "Maximaler Harvester-Tank:",
+      "feature3Value": "100 Einheiten",
       "tip": "💡 Voller Tank? Schließe Förderleitungen an oder liefere an der Himmelshafen-Börse ab, um Credits (CR) zu kassieren."
     },
     "step5": {
       "title": "Windfühler-Sonar-Scan",
       "lead": "Nutze das Sonar, wenn Taschen im Nebel verborgen sind.",
       "text": "Wähle Werkzeug-Slot 1 [Taste 1] für den Windfühler. Klicke in die Wolkendecke, um eine Sonarwelle auszusenden. Die akustischen Heiß/Kalt-Signale leiten dich:",
+      "hotDesc": "< 70px • Tasche direkt am Bohrkopf!",
+      "warmerDesc": "< 160px • Signal verstärkt sich",
+      "colderDesc": "Außerhalb Radar-Reichweite",
       "signalHot": "🔥 HEISS: Tasche direkt in Reichweite!",
       "signalWarmer": "⚡ WÄRMER: Kondensat-Signal in unmittelbarer Nähe.",
       "signalColder": "❄️ KALT: Schwaches Signal, suche in einer anderen Schicht."
@@ -196,6 +273,8 @@
       "title": "Wolken-Drift & Sky-Council",
       "lead": "Der Himmel steht niemals still – er pendelt im 4-Wochen-Zyklus!",
       "text": "Wolkenbänder driften regelmäßig nach Ost und West und kehren alle 4 Wochen zu ihrem Ursprung zurück. Klicke oben auf [🔨 AUKTION], um lukrative Wolkenbänder gegen deine KI-Rivalen zu ersteigern und Sky-Council Anteile zu sammeln!",
+      "auctionHeader": "Auktion & Sky-Council:",
+      "auctionText": "Klicke jederzeit oben auf [🔨 AUKTION], um Gebote auf 6 prozedurale Wolkenbänder abzugeben. Rivalen wie Der Draufgänger, Der Rechner und Die Spürnase bieten mit eigener KI-Persönlichkeit gegen dich!",
       "tip": "🌟 Meistere den Himmel und baue dein Schürf-Imperium auf. Viel Erfolg, Harvester!"
     }
   }

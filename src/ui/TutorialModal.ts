@@ -169,22 +169,22 @@ export class TutorialModal {
               <div class="p-2.5 rounded-xl border border-cyan-500/40 bg-slate-800/60 text-xs text-sky-200 flex items-start space-x-2">
                 <span class="text-base">❄️</span>
                 <div>
-                  <span class="font-bold text-cyan-300">Hochzone:</span>
-                  <span class="text-slate-300 ml-1">Frostkristalle (Dünne Wolken, 25 CR/Einheit)</span>
+                  <span class="font-bold text-cyan-300">${t('tutorial.step1.highLead')}</span>
+                  <span class="text-slate-300 ml-1">${t('tutorial.step1.highSub')}</span>
                 </div>
               </div>
               <div class="p-2.5 rounded-xl border border-blue-500/40 bg-slate-800/60 text-xs text-blue-200 flex items-start space-x-2">
                 <span class="text-base">💧</span>
                 <div>
-                  <span class="font-bold text-blue-300">Mittelzone:</span>
-                  <span class="text-slate-300 ml-1">Skywater (Sanfte Feuchte, 10 CR/Einheit)</span>
+                  <span class="font-bold text-blue-300">${t('tutorial.step1.midLead')}</span>
+                  <span class="text-slate-300 ml-1">${t('tutorial.step1.midSub')}</span>
                 </div>
               </div>
               <div class="p-2.5 rounded-xl border border-amber-500/40 bg-slate-800/60 text-xs text-amber-200 flex items-start space-x-2">
                 <span class="text-base">⚡</span>
                 <div>
-                  <span class="font-bold text-amber-300">Tiefzone:</span>
-                  <span class="text-slate-300 ml-1">Sturmladung (Dichte Gewitter, 18 CR/Einheit)</span>
+                  <span class="font-bold text-amber-300">${t('tutorial.step1.lowLead')}</span>
+                  <span class="text-slate-300 ml-1">${t('tutorial.step1.lowSub')}</span>
                 </div>
               </div>
             </div>
@@ -200,15 +200,15 @@ export class TutorialModal {
             <div class="p-3 rounded-xl border border-slate-700/80 bg-slate-800/40 space-y-2">
               <div class="flex items-center space-x-3 text-xs text-slate-300">
                 <span class="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-sky-400 font-mono font-bold">1</span>
-                <span>Klicke unterhalb der Plattform und ziehe den Zeiger nach unten.</span>
+                <span>${t('tutorial.step2.instruction1')}</span>
               </div>
               <div class="flex items-center space-x-3 text-xs text-slate-300">
                 <span class="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-sky-400 font-mono font-bold">2</span>
-                <span>Die Sonde schneidet eine permanente <strong>Kanalspur (Bohrloch)</strong> frei.</span>
+                <span>${t('tutorial.step2.instruction2')}</span>
               </div>
               <div class="flex items-center space-x-3 text-xs text-slate-300">
                 <span class="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-sky-400 font-mono font-bold">3</span>
-                <span>In freigeschnittenen Kanälen gleitet die Sonde mit vollen 380 px/s!</span>
+                <span>${t('tutorial.step2.instruction3')}</span>
               </div>
             </div>
             <p class="text-xs text-amber-300/90 bg-amber-950/40 p-2.5 rounded-lg border border-amber-800/40">
@@ -226,21 +226,21 @@ export class TutorialModal {
             <div class="grid grid-cols-3 gap-2">
               <div class="p-2.5 rounded-xl border border-cyan-500/50 bg-cyan-950/40 text-center">
                 <div class="text-lg">❄️</div>
-                <div class="text-xs font-bold text-cyan-300 mt-1">Eisbohrer</div>
-                <div class="text-[10px] font-mono text-cyan-200/80 mt-0.5">Taste [Q]</div>
-                <div class="text-[10px] text-slate-400 mt-1">Hochzone</div>
+                <div class="text-xs font-bold text-cyan-300 mt-1">${t('drillHeads.ice')}</div>
+                <div class="text-[10px] font-mono text-cyan-200/80 mt-0.5">${t('tutorial.step3.keyPrefix')} [Q]</div>
+                <div class="text-[10px] text-slate-400 mt-1">${t('zones.high')}</div>
               </div>
               <div class="p-2.5 rounded-xl border border-blue-500/50 bg-blue-950/40 text-center">
                 <div class="text-lg">💧</div>
-                <div class="text-xs font-bold text-blue-300 mt-1">Nebelfänger</div>
-                <div class="text-[10px] font-mono text-blue-200/80 mt-0.5">Taste [W]</div>
-                <div class="text-[10px] text-slate-400 mt-1">Mittelzone</div>
+                <div class="text-xs font-bold text-blue-300 mt-1">${t('drillHeads.fog')}</div>
+                <div class="text-[10px] font-mono text-blue-200/80 mt-0.5">${t('tutorial.step3.keyPrefix')} [W]</div>
+                <div class="text-[10px] text-slate-400 mt-1">${t('zones.mid')}</div>
               </div>
               <div class="p-2.5 rounded-xl border border-amber-500/50 bg-amber-950/40 text-center">
                 <div class="text-lg">⚡</div>
-                <div class="text-xs font-bold text-amber-300 mt-1">Ladungsspitze</div>
-                <div class="text-[10px] font-mono text-amber-200/80 mt-0.5">Taste [E]</div>
-                <div class="text-[10px] text-slate-400 mt-1">Tiefzone</div>
+                <div class="text-xs font-bold text-amber-300 mt-1">${t('drillHeads.charge')}</div>
+                <div class="text-[10px] font-mono text-amber-200/80 mt-0.5">${t('tutorial.step3.keyPrefix')} [E]</div>
+                <div class="text-[10px] text-slate-400 mt-1">${t('zones.low')}</div>
               </div>
             </div>
             <div class="p-2.5 rounded-xl bg-rose-950/50 border border-rose-800/50 text-rose-200 text-xs">
@@ -260,16 +260,16 @@ export class TutorialModal {
             </p>
             <div class="p-3 rounded-xl border border-slate-700/80 bg-slate-800/50 space-y-2 text-xs">
               <div class="flex items-center justify-between">
-                <span class="text-slate-400">Automatische Arretierung:</span>
-                <span class="text-emerald-400 font-bold font-mono">Elastischer Dock</span>
+                <span class="text-slate-400">${t('tutorial.step4.feature1Label')}</span>
+                <span class="text-emerald-400 font-bold font-mono">${t('tutorial.step4.feature1Value')}</span>
               </div>
               <div class="flex items-center justify-between">
-                <span class="text-slate-400">Förder-Dynamik:</span>
-                <span class="text-sky-300 font-mono">Perlen am Seil</span>
+                <span class="text-slate-400">${t('tutorial.step4.feature2Label')}</span>
+                <span class="text-sky-300 font-mono">${t('tutorial.step4.feature2Value')}</span>
               </div>
               <div class="flex items-center justify-between">
-                <span class="text-slate-400">Maximaler Harvester-Tank:</span>
-                <span class="text-amber-300 font-mono font-bold">100 Einheiten</span>
+                <span class="text-slate-400">${t('tutorial.step4.feature3Label')}</span>
+                <span class="text-amber-300 font-mono font-bold">${t('tutorial.step4.feature3Value')}</span>
               </div>
             </div>
             <p class="text-xs text-sky-300/90 bg-sky-950/40 p-2.5 rounded-lg border border-sky-800/40">
@@ -291,23 +291,23 @@ export class TutorialModal {
               <div class="p-2 rounded-lg bg-amber-950/40 border border-amber-800/40 text-xs text-amber-200 flex items-center justify-between">
                 <span class="font-bold flex items-center space-x-1.5">
                   <span>🔥</span>
-                  <span>HEISS (HOT):</span>
+                  <span>${t('sonar.veryHot')}</span>
                 </span>
-                <span class="text-slate-300 font-mono">&lt; 70px • Tasche direkt am Bohrkopf!</span>
+                <span class="text-slate-300 font-mono">${t('tutorial.step5.hotDesc')}</span>
               </div>
               <div class="p-2 rounded-lg bg-sky-950/40 border border-sky-800/40 text-xs text-sky-200 flex items-center justify-between">
                 <span class="font-bold flex items-center space-x-1.5">
                   <span>⚡</span>
-                  <span>WÄRMER (WARMER):</span>
+                  <span>${t('sonar.warmer')}</span>
                 </span>
-                <span class="text-slate-300 font-mono">&lt; 160px • Signal verstärkt sich</span>
+                <span class="text-slate-300 font-mono">${t('tutorial.step5.warmerDesc')}</span>
               </div>
               <div class="p-2 rounded-lg bg-slate-800/50 border border-slate-700/60 text-xs text-slate-300 flex items-center justify-between">
                 <span class="font-bold flex items-center space-x-1.5">
                   <span>❄️</span>
-                  <span>KALT (COLDER):</span>
+                  <span>${t('sonar.colder')}</span>
                 </span>
-                <span class="text-slate-400 font-mono">Außerhalb Radar-Reichweite</span>
+                <span class="text-slate-400 font-mono">${t('tutorial.step5.colderDesc')}</span>
               </div>
             </div>
           </div>
@@ -325,10 +325,10 @@ export class TutorialModal {
             <div class="p-3 rounded-xl border border-amber-600/40 bg-amber-950/30 space-y-2 text-xs">
               <div class="flex items-center space-x-2 text-amber-300 font-semibold">
                 <span>🔨</span>
-                <span>Auktion & Sky-Council:</span>
+                <span>${t('tutorial.step6.auctionHeader')}</span>
               </div>
               <p class="text-slate-300 text-[11px] leading-relaxed">
-                Klicke jederzeit oben auf <strong>[🔨 AUKTION]</strong>, um Gebote auf 6 prozedurale Wolkenbänder abzugeben. Rivalen wie <em>Der Draufgänger</em>, <em>Der Rechner</em> und <em>Die Spürnase</em> bieten mit eigener KI-Persönlichkeit gegen dich!
+                ${t('tutorial.step6.auctionText')}
               </p>
             </div>
             <p class="text-xs text-emerald-300 bg-emerald-950/40 p-2.5 rounded-lg border border-emerald-800/40">
@@ -418,7 +418,7 @@ export class TutorialModal {
 
             <!-- Keyboard shortcut hint -->
             <span class="text-[10px] text-slate-500 hidden sm:inline-block font-mono">
-              [←] Zurück • [→] Weiter • [ESC] Schließen
+              ${t('tutorial.shortcutHint')}
             </span>
 
             <!-- Next / Finish Button -->

@@ -55,7 +55,7 @@ export interface DrillHeadOption {
   keyNum: string;
   nameKey: string;
   symbol: string;
-  zoneLabel: string;
+  zoneKey: string;
   colorClass: string;
   borderClass: string;
 }
@@ -66,7 +66,7 @@ export const DRILL_HEADS: DrillHeadOption[] = [
     keyNum: '1',
     nameKey: 'drillHeads.ice',
     symbol: '❄',
-    zoneLabel: 'Hoch',
+    zoneKey: 'zones.highShort',
     colorClass: 'text-cyan-300',
     borderClass: 'border-cyan-500/60 bg-cyan-950/60',
   },
@@ -75,7 +75,7 @@ export const DRILL_HEADS: DrillHeadOption[] = [
     keyNum: '2',
     nameKey: 'drillHeads.fog',
     symbol: '💧',
-    zoneLabel: 'Mittel',
+    zoneKey: 'zones.midShort',
     colorClass: 'text-blue-300',
     borderClass: 'border-blue-500/60 bg-blue-950/60',
   },
@@ -84,7 +84,7 @@ export const DRILL_HEADS: DrillHeadOption[] = [
     keyNum: '3',
     nameKey: 'drillHeads.charge',
     symbol: '⚡',
-    zoneLabel: 'Tief',
+    zoneKey: 'zones.lowShort',
     colorClass: 'text-amber-300',
     borderClass: 'border-amber-500/60 bg-amber-950/60',
   },
@@ -208,7 +208,7 @@ export class ToolBar {
         <!-- Sub-Selector Bar for Drill Heads (Slot 2 options: Eisbohrer, Nebelfänger, Ladungsspitze) -->
         <div class="flex items-center justify-between gap-1.5 px-2 py-1 bg-slate-900/95 backdrop-blur-md rounded-xl border border-slate-800 text-xs ${this.activeTool === 'drill' ? 'opacity-100' : 'opacity-70'}">
           <span class="text-[10px] uppercase font-mono tracking-wider text-slate-400 pl-1">
-            Kopf:
+            ${t('tools.head')}
           </span>
           <div class="flex items-center gap-1 flex-1 justify-end">
             ${DRILL_HEADS.map((head) => {
@@ -222,7 +222,7 @@ export class ToolBar {
                   type="button"
                   data-head="${head.id}"
                   class="flex items-center space-x-1 px-2 py-1 rounded-lg border text-[11px] transition-all cursor-pointer focus:outline-none ${pillClasses}"
-                  title="${t(head.nameKey)} (${head.zoneLabel}zone) [Taste ${head.keyNum}]"
+                  title="${t(head.nameKey)} (${t(head.zoneKey)}) [${t('tools.key')} ${head.keyNum}]"
                 >
                   <span>${head.symbol}</span>
                   <span class="truncate">${t(head.nameKey)}</span>

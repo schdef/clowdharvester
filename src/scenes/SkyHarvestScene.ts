@@ -6,7 +6,7 @@ import { ProbePhysics, DrillHeadType } from '../core/ProbePhysics';
 import { ToolType } from '../ui/ToolBar';
 import { GameState } from '../core/GameState';
 import { CloudBand } from '../core/AuctionEngine';
-import { t } from '../i18n/i18n';
+import { t, onLanguageChange } from '../i18n/i18n';
 
 interface CloudInstance {
   sprite: Phaser.GameObjects.Sprite;
@@ -69,6 +69,12 @@ export class SkyHarvestScene extends Phaser.Scene {
   private sonarHintText!: Phaser.GameObjects.Text;
   private sonarHintTimer = 0;
 
+  // Starthilfe Tooltip
+  private startHintContainer: Phaser.GameObjects.Container | null = null;
+  private startHintText: Phaser.GameObjects.Text | null = null;
+  private hasDismissedStartHint = false;
+  private langListener: (() => void) | null = null;
+
   // Progress & Inventory
   private tankStored = 0;
   private readonly tankMax = 100;
@@ -91,6 +97,14 @@ export class SkyHarvestScene extends Phaser.Scene {
   public create(): void {
     const width = this.cameras.main.width;
     const height = this.cameras.main.height;
+
+    // Ensure sidebars and mobile dock are visible in SkyHarvestScene
+    const leftSidebar = document.getElementById('desktop-left-sidebar');
+    const rightSidebar = document.getElementById('desktop-right-sidebar');
+    const mobileDock = document.getElementById('mobile-thumb-dock');
+    if (leftSidebar) leftSidebar.style.display = '';
+    if (rightSidebar) rightSidebar.style.display = '';
+    if (mobileDock) mobileDock.style.display = '';
 
     // 1. Initialize Simulation Model with custom pockets from active cloud band if present
     const customPockets = this.activeBand?.actualData.pockets;
@@ -153,13 +167,87 @@ export class SkyHarvestScene extends Phaser.Scene {
     // 16. Dynamic Full-Screen Resize Listener
     this.scale.on('resize', this.handleResize, this);
 
-    // 17. Show arrival banner if active cloud band was acquired
+    // 17. Starthilfe Tooltip
+    this.createStartHintTooltip(width);
+
+    // 18. Show arrival banner if active cloud band was acquired
     if (this.activeBand) {
       this.showBandArrivalBanner(width);
     }
 
+    // 19. Language change listener
+    this.langListener = onLanguageChange(() => this.handleLanguageChange());
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      if (this.langListener) {
+        this.langListener();
+        this.langListener = null;
+      }
+    });
+
     // Fade in camera
     this.cameras.main.fadeIn(500, 15, 23, 42);
+  }
+
+  private handleLanguageChange(): void {
+    const width = this.cameras.main.width;
+    const height = this.cameras.main.height;
+    this.buildSkyBackground(width, height);
+    if (this.harborDockLabel) {
+      this.harborDockLabel.setText(t('harvest.harborTitle'));
+    }
+    if (this.startHintText) {
+      this.startHintText.setText(t('harvest.startHint'));
+    }
+  }
+
+  private createStartHintTooltip(width: number): void {
+    if (this.hasDismissedStartHint) return;
+
+    this.startHintContainer = this.add.container(width / 2, 118);
+    this.startHintContainer.setDepth(25);
+
+    const hintBg = this.add.graphics();
+    hintBg.fillStyle(0x0F172A, 0.95);
+    hintBg.fillRoundedRect(-180, -18, 360, 36, 18);
+    hintBg.lineStyle(1.5, ColorPalette.highZone.turquoiseCrystalNum, 0.9);
+    hintBg.strokeRoundedRect(-180, -18, 360, 36, 18);
+    this.startHintContainer.add(hintBg);
+
+    this.startHintText = this.add.text(0, 0, t('harvest.startHint'), {
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: '12px',
+      color: '#38BDF8',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.startHintContainer.add(this.startHintText);
+
+    // Gently pulsing animation
+    this.tweens.add({
+      targets: this.startHintContainer,
+      y: 122,
+      duration: 800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+  }
+
+  private dismissStartHint(): void {
+    if (this.startHintContainer && !this.hasDismissedStartHint) {
+      this.hasDismissedStartHint = true;
+      this.tweens.add({
+        targets: this.startHintContainer,
+        alpha: 0,
+        y: 104,
+        duration: 350,
+        ease: 'Power2',
+        onComplete: () => {
+          this.startHintContainer?.destroy();
+          this.startHintContainer = null;
+          this.startHintText = null;
+        },
+      });
+    }
   }
 
   private handleResize(gameSize: Phaser.Structs.Size): void {
@@ -210,7 +298,10 @@ export class SkyHarvestScene extends Phaser.Scene {
     }).setOrigin(0.5);
     bannerContainer.add(titleText);
 
-    const subText = this.add.text(0, 10, `${this.activeBand.zone.toUpperCase()} ZONE • ${this.activeBand.estimatedSize} • BUNDEL-AUKTION`, {
+    const zoneName = t(`zones.${this.activeBand.zone}Short`).toUpperCase();
+    const zoneLabel = t('zones.zone').toUpperCase();
+    const bundleLabel = t('auction.bundleAuction');
+    const subText = this.add.text(0, 10, `${zoneName} ${zoneLabel} • ${this.activeBand.estimatedSize} • ${bundleLabel}`, {
       fontFamily: 'monospace',
       fontSize: '10px',
       color: ColorPalette.uiHarbor.brass,
@@ -275,21 +366,21 @@ export class SkyHarvestScene extends Phaser.Scene {
     this.zoneLabels.forEach((lbl) => lbl.destroy());
     this.zoneLabels = [];
 
-    const l1 = this.add.text(16, highHeight * 0.35, 'HOCHZONE (FROSTKRISTALLE)', {
+    const l1 = this.add.text(16, highHeight * 0.35, t('zones.highFull'), {
       fontFamily: 'system-ui, sans-serif',
       fontSize: '10px',
       color: '#7DD3FC',
       letterSpacing: 2,
     }).setAlpha(0.65).setDepth(1);
 
-    const l2 = this.add.text(16, highHeight + midHeight * 0.2, 'MITTELZONE (SKYWATER)', {
+    const l2 = this.add.text(16, highHeight + midHeight * 0.2, t('zones.midFull'), {
       fontFamily: 'system-ui, sans-serif',
       fontSize: '10px',
       color: '#93C5FD',
       letterSpacing: 2,
     }).setAlpha(0.65).setDepth(1);
 
-    const l3 = this.add.text(16, midEnd + (height - midEnd) * 0.15, 'TIEFZONE (STURMLADUNG)', {
+    const l3 = this.add.text(16, midEnd + (height - midEnd) * 0.15, t('zones.lowFull'), {
       fontFamily: 'system-ui, sans-serif',
       fontSize: '10px',
       color: '#F472B6',
@@ -410,7 +501,7 @@ export class SkyHarvestScene extends Phaser.Scene {
     }
 
     if (!this.harborDockLabel) {
-      this.harborDockLabel = this.add.text(width / 2, height - 35, 'HIMMELSHAFEN & ANLEGESTELLE', {
+      this.harborDockLabel = this.add.text(width / 2, height - 35, t('harvest.harborTitle'), {
         fontFamily: 'system-ui, sans-serif',
         fontSize: '11px',
         color: '#64748B',
@@ -419,6 +510,7 @@ export class SkyHarvestScene extends Phaser.Scene {
       this.harborDockLabel.setDepth(7);
     } else {
       this.harborDockLabel.setPosition(width / 2, height - 35);
+      this.harborDockLabel.setText(t('harvest.harborTitle'));
     }
   }
 
@@ -498,6 +590,7 @@ export class SkyHarvestScene extends Phaser.Scene {
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       AudioManager.getInstance().init();
       this.isPointerActive = true;
+      this.dismissStartHint();
       const width = this.cameras.main.width;
       const height = this.cameras.main.height;
 
@@ -526,6 +619,7 @@ export class SkyHarvestScene extends Phaser.Scene {
 
     this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
       if (pointer.isDown && this.isPointerActive && this.activeTool === 'drill') {
+        this.dismissStartHint();
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
         this.probeTargetX = Phaser.Math.Clamp(pointer.x, 30, width - 30);
@@ -547,20 +641,20 @@ export class SkyHarvestScene extends Phaser.Scene {
     const maxPingRadius = 160;
 
     let distanceRatio = 1.0;
-    let hintMsg = t('scan.colder');
+    let hintMsg = t('sonar.colder');
     let pingColor: number = ColorPalette.highZone.turquoiseCrystalNum;
 
     if (nearest) {
       distanceRatio = nearest.distance / maxPingRadius;
 
       if (nearest.distance < 70) {
-        hintMsg = `${t('scan.hot')} (${nearest.pocket.name})`;
+        hintMsg = `${t('sonar.veryHot')} (${nearest.pocket.name})`;
         pingColor = ColorPalette.lowZone.glowGoldNum;
       } else if (nearest.distance < maxPingRadius) {
-        hintMsg = `${t('scan.warmer')} (${nearest.pocket.name})`;
+        hintMsg = `${t('sonar.warmer')} (${nearest.pocket.name})`;
         pingColor = ColorPalette.midZone.condensateDropNum;
       } else {
-        hintMsg = `${t('scan.colder')} • Signal schwach`;
+        hintMsg = `${t('sonar.colder')} • ${t('sonar.signalWeak')}`;
       }
     }
 

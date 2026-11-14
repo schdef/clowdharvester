@@ -10,7 +10,7 @@ import {
   ParticipantId,
 } from '../core/AuctionEngine';
 import { GameState } from '../core/GameState';
-import { t } from '../i18n/i18n';
+import { t, onLanguageChange } from '../i18n/i18n';
 
 export class AuctionScene extends Phaser.Scene {
   private engine!: AuctionEngine;
@@ -25,6 +25,7 @@ export class AuctionScene extends Phaser.Scene {
   private creditsText!: Phaser.GameObjects.Text;
   private roundTitleText!: Phaser.GameObjects.Text;
   private rivalAvatars: Phaser.GameObjects.Container[] = [];
+  private langListener: (() => void) | null = null;
 
   // Selected band for season handoff
   private selectedBandForHarvest: CloudBand | null = null;
@@ -36,6 +37,29 @@ export class AuctionScene extends Phaser.Scene {
   public create(): void {
     const width = this.cameras.main.width;
     const height = this.cameras.main.height;
+
+    // Automatically hide sidebars and mobile dock in AuctionScene so auction cards are 100% visible
+    const leftSidebar = document.getElementById('desktop-left-sidebar');
+    const rightSidebar = document.getElementById('desktop-right-sidebar');
+    const mobileDock = document.getElementById('mobile-thumb-dock');
+    if (leftSidebar) leftSidebar.style.display = 'none';
+    if (rightSidebar) rightSidebar.style.display = 'none';
+    if (mobileDock) mobileDock.style.display = 'none';
+
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      if (leftSidebar) leftSidebar.style.display = '';
+      if (rightSidebar) rightSidebar.style.display = '';
+      if (mobileDock) mobileDock.style.display = '';
+      if (this.langListener) {
+        this.langListener();
+        this.langListener = null;
+      }
+    });
+
+    // Language listener
+    this.langListener = onLanguageChange(() => {
+      this.handleResize(this.scale.gameSize);
+    });
 
     // Initialize AuctionEngine with GameState starting credits (1000 CR)
     const startingCredits = GameState.getInstance().getData().credits || AuctionEngine.INITIAL_CREDITS;
@@ -133,6 +157,46 @@ export class AuctionScene extends Phaser.Scene {
       color: '#94A3B8',
     });
 
+    // Prominent "🚀 JETZT SCHÜRFEN / HARVEST NOW" button to skip auction directly
+    const skipBtnW = Math.min(150, Math.max(110, width * 0.26));
+    const skipBtnH = 38;
+    const skipBtnX = width - 150 - skipBtnW - 8;
+    const skipBtnY = 16;
+
+    const skipBg = this.add.graphics();
+    const drawSkipBg = (hover = false) => {
+      skipBg.clear();
+      skipBg.fillStyle(hover ? 0x059669 : 0x047857, 0.95);
+      skipBg.fillRoundedRect(skipBtnX, skipBtnY, skipBtnW, skipBtnH, 8);
+      skipBg.lineStyle(1.5, 0x34D399, 0.9);
+      skipBg.strokeRoundedRect(skipBtnX, skipBtnY, skipBtnW, skipBtnH, 8);
+    };
+    drawSkipBg();
+
+    const skipText = this.add.text(skipBtnX + skipBtnW / 2, skipBtnY + skipBtnH / 2, t('auction.startHarvestingNow'), {
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: '11px',
+      color: '#FFFFFF',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    const skipHit = this.add.zone(skipBtnX + skipBtnW / 2, skipBtnY + skipBtnH / 2, skipBtnW, skipBtnH);
+    skipHit.setInteractive({ useHandCursor: true });
+    skipHit.on('pointerover', () => drawSkipBg(true));
+    skipHit.on('pointerout', () => drawSkipBg(false));
+    skipHit.on('pointerdown', () => {
+      AudioManager.getInstance().playUiClick();
+      let activeBand = GameState.getInstance().getActiveCloudBand();
+      if (!activeBand) {
+        activeBand = this.engine.getAllBands()[0];
+        GameState.getInstance().setActiveCloudBand(activeBand);
+      }
+      this.cameras.main.fadeOut(300, 15, 23, 42);
+      this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+        this.scene.start('SkyHarvestScene', { cloudBand: activeBand });
+      });
+    });
+
     // Player Credits Display (Emerald Box)
     const creditsBox = this.add.graphics();
     creditsBox.fillStyle(0x064E3B, 0.8);
@@ -155,7 +219,17 @@ export class AuctionScene extends Phaser.Scene {
       fontStyle: 'bold',
     }).setOrigin(1, 0);
 
-    this.mainContainer.add([headerBg, this.roundTitleText, subText, creditsBox, crIcon, this.creditsText]);
+    this.mainContainer.add([
+      headerBg,
+      this.roundTitleText,
+      subText,
+      skipBg,
+      skipText,
+      skipHit,
+      creditsBox,
+      crIcon,
+      this.creditsText,
+    ]);
   }
 
   private updateCreditsDisplay(): void {
@@ -225,7 +299,7 @@ export class AuctionScene extends Phaser.Scene {
     zoneBadge.strokeRoundedRect(12, 12, 90, 22, 4);
     card.add(zoneBadge);
 
-    const zoneLabel = this.add.text(57, 23, band.zone.toUpperCase(), {
+    const zoneLabel = this.add.text(57, 23, t(`zones.${band.zone}Short`).toUpperCase(), {
       fontFamily: 'monospace',
       fontSize: '10px',
       color: zoneColors.accent,
@@ -312,7 +386,7 @@ export class AuctionScene extends Phaser.Scene {
       }).setOrigin(0.5);
       card.add(titleLabel);
 
-      const costLabel = this.add.text(toolX + toolWidth / 2, toolsRowY + 26, isScanned ? 'AKTIV' : `${info.cost} CR`, {
+      const costLabel = this.add.text(toolX + toolWidth / 2, toolsRowY + 26, isScanned ? t('auction.activeBadge') : `${info.cost} CR`, {
         fontFamily: 'monospace',
         fontSize: '10px',
         color: isScanned ? '#6EE7B7' : '#FBBF24',
@@ -353,15 +427,15 @@ export class AuctionScene extends Phaser.Scene {
     const telemetry = this.engine.getScanTelemetry('player', band.id);
     const telemetryLines: string[] = [];
     if (telemetry.hasWindSensor) {
-      telemetryLines.push(`📡 Dichte: ${t(telemetry.densityEstimate || '')} • ${telemetry.pocketsCount} Taschen`);
+      telemetryLines.push(`📡 ${t('auction.densityLabel')}: ${t(telemetry.densityEstimate || '')} • ${telemetry.pocketsCount} ${t('auction.pocketsCountLabel')}`);
     }
     if (telemetry.hasEchoDrone) {
-      telemetryLines.push(`🚁 Tiefe: Schicht ${telemetry.layerDepth} • ${t(telemetry.locationHint || '')}`);
+      telemetryLines.push(`🚁 ${t('auction.depthLabel')}: ${t('auction.layerLabel')} ${telemetry.layerDepth} • ${t(telemetry.locationHint || '')}`);
     }
     if (telemetry.hasSpectralScan) {
       const qualityStars = '⭐'.repeat(telemetry.quality || 1);
       const auroraTxt = telemetry.hasAurora ? t('auction.telemetry.auroraYes') : t('auction.telemetry.auroraNo');
-      telemetryLines.push(`🔬 Güte: ${qualityStars} • ${auroraTxt}`);
+      telemetryLines.push(`🔬 ${t('auction.qualityLabel')}: ${qualityStars} • ${auroraTxt}`);
     }
 
     const telemBox = this.add.graphics();
@@ -372,7 +446,7 @@ export class AuctionScene extends Phaser.Scene {
     const telemText = this.add.text(
       20,
       172,
-      telemetryLines.length > 0 ? telemetryLines.join('\n') : 'Keine zusätzlichen Scans gekauft. Biete nach Windradar & Vorab-Hinweis.',
+      telemetryLines.length > 0 ? telemetryLines.join('\n') : t('auction.noScansBought'),
       {
         fontFamily: 'monospace',
         fontSize: '10px',
@@ -513,7 +587,7 @@ export class AuctionScene extends Phaser.Scene {
     const totalWidth = Math.min(540, screenWidth - 28);
     const startX = (screenWidth - totalWidth) / 2;
 
-    const title = this.add.text(startX, stripY + 8, 'KI-RIVALEN (FAIRE AUTONOME BIETER)', {
+    const title = this.add.text(startX, stripY + 8, t('auction.aiRivalsTitle'), {
       fontFamily: 'monospace',
       fontSize: '10px',
       color: '#94A3B8',
@@ -613,7 +687,7 @@ export class AuctionScene extends Phaser.Scene {
     this.revealContainer.add(backdrop);
 
     // Header Title
-    const title = this.add.text(width / 2, 40, `🔨 ENTHÜLLUNG • RUNDE ${roundResult.round} / 3`, {
+    const title = this.add.text(width / 2, 40, `🔨 ${t('auction.revealTitle')} • ${t('auction.round')} ${roundResult.round} / 3`, {
       fontFamily: 'system-ui, sans-serif',
       fontSize: '18px',
       color: ColorPalette.uiHarbor.brass,
@@ -651,7 +725,7 @@ export class AuctionScene extends Phaser.Scene {
       const winnerBadge = this.add.text(
         cardW - 14,
         14,
-        isPlayerWinner ? '🎉 DU HAST GEWONNEN!' : `ZUSCHLAG: ${winnerName}`,
+        isPlayerWinner ? t('auction.youWonTitle') : `${t('auction.awardedTo')} ${winnerName}`,
         {
           fontFamily: 'system-ui, sans-serif',
           fontSize: '11px',
@@ -781,7 +855,7 @@ export class AuctionScene extends Phaser.Scene {
     this.summaryContainer.add(bg);
 
     // Title
-    const title = this.add.text(width / 2, 34, 'AUKTION BEENDET • DEINE HIMMELSLIZENZEN', {
+    const title = this.add.text(width / 2, 34, t('auction.auctionEndedTitle'), {
       fontFamily: 'system-ui, sans-serif',
       fontSize: '15px',
       color: ColorPalette.uiHarbor.brass,
@@ -842,7 +916,7 @@ export class AuctionScene extends Phaser.Scene {
       bContainer.add(bBg);
 
       // Zone tag
-      const zTag = this.add.text(10, 10, band.zone.toUpperCase(), {
+      const zTag = this.add.text(10, 10, t(`zones.${band.zone}Short`).toUpperCase(), {
         fontFamily: 'monospace',
         fontSize: '9px',
         color: zoneColors.accent,
@@ -854,7 +928,7 @@ export class AuctionScene extends Phaser.Scene {
       const wTag = this.add.text(
         cardW - 10,
         10,
-        isPlayerWinner ? 'DEIN BAND' : this.engine.getParticipant(band.winner || 'player').name,
+        isPlayerWinner ? t('auction.yourBand') : this.engine.getParticipant(band.winner || 'player').name,
         {
           fontFamily: 'system-ui, sans-serif',
           fontSize: '9px',
@@ -878,7 +952,7 @@ export class AuctionScene extends Phaser.Scene {
       const rInfo = this.add.text(
         10,
         64,
-        `${band.primaryResource.toUpperCase()} • ${'⭐'.repeat(band.actualData.quality)} • ${band.actualData.pocketsCount} Taschen`,
+        `${band.primaryResource.toUpperCase()} • ${'⭐'.repeat(band.actualData.quality)} • ${band.actualData.pocketsCount} ${t('auction.pocketsCountLabel')}`,
         {
           fontFamily: 'monospace',
           fontSize: '9px',
@@ -889,7 +963,7 @@ export class AuctionScene extends Phaser.Scene {
 
       // Aurora Badge
       if (band.actualData.hasAurora) {
-        const aBadge = this.add.text(10, 84, '✨ AURORA-FUND', {
+        const aBadge = this.add.text(10, 84, t('auction.auroraFound'), {
           fontFamily: 'monospace',
           fontSize: '9px',
           color: '#F472B6',
@@ -899,7 +973,7 @@ export class AuctionScene extends Phaser.Scene {
       }
 
       // Winning bid cost
-      const costTxt = this.add.text(10, cardH - 26, `Zuschlag: ${band.winningBid} CR`, {
+      const costTxt = this.add.text(10, cardH - 26, `${t('auction.awardLabel')} ${band.winningBid} CR`, {
         fontFamily: 'monospace',
         fontSize: '10px',
         color: '#FBBF24',

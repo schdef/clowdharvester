@@ -11,7 +11,7 @@ export interface CommodityPrice {
 
 export class MarketTicker {
   private containerElement: HTMLElement | null = null;
-  private isCollapsed = false;
+  private isCollapsed = true;
   private prices: CommodityPrice[] = [
     { nameKey: 'zones.resourceHigh', price: 25, change: 1.8, color: ColorPalette.highZone.turquoiseCrystal },
     { nameKey: 'zones.resourceMid', price: 10, change: -0.5, color: ColorPalette.midZone.condensateDrop },
@@ -48,18 +48,29 @@ export class MarketTicker {
 
     if (this.isCollapsed) {
       // Compact collapsed mini-tab
-      this.containerElement.classList.remove('w-80', 'p-4');
-      this.containerElement.classList.add('w-auto', 'p-1.5');
+      this.containerElement.classList.remove(
+        'w-80',
+        'max-h-[calc(100vh-8.5rem)]',
+        'backdrop-blur-md',
+        'bg-slate-900/75',
+        'border',
+        'border-slate-700/60',
+        'rounded-2xl',
+        'shadow-2xl',
+        'p-4',
+        'overflow-y-auto'
+      );
+      this.containerElement.classList.add('w-auto', 'p-0', 'bg-transparent', 'border-0', 'shadow-none');
       this.containerElement.innerHTML = `
         <button 
           id="btn-market-expand"
-          class="flex items-center space-x-2 px-2.5 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700/60 text-emerald-400 text-xs font-mono transition shadow-lg cursor-pointer"
-          title="Börsenkurse & Ratsdossier ausklappen"
+          class="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700/60 text-emerald-400 text-xs font-mono transition shadow-lg cursor-pointer"
+          title="${t('market.expandHint')}"
         >
-          <span class="text-slate-400">◀</span>
-          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-          <span class="font-bold">BÖRSE</span>
-          <span class="text-slate-400 text-[10px]">30 Ratsant.</span>
+          <span class="text-slate-400 text-[10px]">◀</span>
+          <span class="text-sm">📈</span>
+          <span class="font-bold">${t('header.market')}</span>
+          <span class="text-slate-400 text-[10px]">${this.playerShares} ${t('market.sharesShort')}</span>
         </button>
       `;
 
@@ -71,8 +82,19 @@ export class MarketTicker {
     }
 
     // Full Expanded Floating Overlay
-    this.containerElement.classList.remove('w-auto', 'p-1.5');
-    this.containerElement.classList.add('w-80', 'p-4');
+    this.containerElement.classList.remove('w-auto', 'p-0', 'bg-transparent', 'border-0', 'shadow-none');
+    this.containerElement.classList.add(
+      'w-80',
+      'max-h-[calc(100vh-8.5rem)]',
+      'backdrop-blur-md',
+      'bg-slate-900/75',
+      'border',
+      'border-slate-700/60',
+      'rounded-2xl',
+      'shadow-2xl',
+      'p-4',
+      'overflow-y-auto'
+    );
 
     this.containerElement.innerHTML = `
       <div class="h-full flex flex-col space-y-4 text-slate-300 font-sans select-none">
@@ -80,20 +102,20 @@ export class MarketTicker {
         <div class="border-b border-slate-800/80 pb-2.5 flex items-start justify-between">
           <div>
             <div class="flex items-center space-x-2">
-              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+              <span class="text-sm">📈</span>
               <h2 class="text-xs font-semibold uppercase tracking-widest text-emerald-400">
                 ${t('market.title')}
               </h2>
             </div>
             <p class="text-xs font-medium text-slate-300 mt-0.5">
-              ${t('market.ticker')} & Kurstrends
+              ${t('market.ticker')} & ${t('market.priceTrends')}
             </p>
           </div>
 
           <button 
             id="btn-market-collapse"
             class="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-slate-700/60 transition text-[11px] cursor-pointer"
-            title="Markt minimieren"
+            title="${t('market.collapseHint')}"
           >
             ▶
           </button>
@@ -121,7 +143,7 @@ export class MarketTicker {
           }).join('')}
           <div class="flex items-center justify-between px-1 text-[11px] text-amber-400/90">
             <span>${t('market.evaporationRate')}</span>
-            <span class="font-mono text-slate-400">Schutz vor Hortung</span>
+            <span class="font-mono text-slate-400">${t('market.antiHoarding')}</span>
           </div>
         </div>
 
@@ -132,33 +154,33 @@ export class MarketTicker {
               ${t('market.councilDossier')}
             </h3>
             <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-800/40">
-              Woche 4, 8, 12
+              ${t('market.weeksSchedule')}
             </span>
           </div>
 
           <p class="text-[11px] text-slate-400 leading-relaxed">
-            30 Ratsanteile bestimmen die Vorherrschaft im Sky-Council.
+            ${t('market.councilRule')}
           </p>
 
           <div class="space-y-2 pt-1">
             <!-- Player -->
             <div class="flex items-center justify-between text-xs">
-              <span class="text-slate-300 font-medium">Spieler (Du)</span>
+              <span class="text-slate-300 font-medium">${t('market.playerYou')}</span>
               <span class="font-mono font-bold text-emerald-400">${this.playerShares} / 30</span>
             </div>
             <!-- Draufgänger -->
             <div class="flex items-center justify-between text-xs">
-              <span class="text-slate-400">Der Draufgänger</span>
+              <span class="text-slate-400">${t('rivals.daredevil')}</span>
               <span class="font-mono text-slate-300">${this.daredevilShares} / 30</span>
             </div>
             <!-- Rechner -->
             <div class="flex items-center justify-between text-xs">
-              <span class="text-slate-400">Der Rechner</span>
+              <span class="text-slate-400">${t('rivals.calculator')}</span>
               <span class="font-mono text-slate-300">${this.calculatorShares} / 30</span>
             </div>
             <!-- Spürnase -->
             <div class="flex items-center justify-between text-xs">
-              <span class="text-slate-400">Die Spürnase</span>
+              <span class="text-slate-400">${t('rivals.tracker')}</span>
               <span class="font-mono text-slate-300">${this.trackerShares} / 30</span>
             </div>
           </div>

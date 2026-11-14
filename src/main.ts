@@ -109,12 +109,14 @@ function initUI(): void {
     const creditsEl = document.getElementById('header-credits');
     const auctionLabelEl = document.getElementById('header-auction-label');
     const helpLabelEl = document.getElementById('header-help-label');
+    const langBtn = document.getElementById('btn-lang-toggle');
 
     if (seasonEl) seasonEl.textContent = `${t('header.season')} ${currentSeason}`;
     if (weekEl) weekEl.textContent = `${t('header.week')} ${currentWeek}`;
     if (creditsEl) creditsEl.textContent = GameState.getInstance().getData().credits.toString();
     if (auctionLabelEl) auctionLabelEl.textContent = t('header.auction').toUpperCase();
     if (helpLabelEl) helpLabelEl.textContent = t('header.help');
+    if (langBtn) langBtn.textContent = getLanguage().toUpperCase();
   };
 
   onLanguageChange(updateHeaderLabels);
@@ -150,6 +152,12 @@ document.addEventListener('DOMContentLoaded', () => {
   if (auctionBtn) {
     auctionBtn.addEventListener('click', () => {
       AudioManager.getInstance().playUiClick();
+      const leftSidebar = document.getElementById('desktop-left-sidebar');
+      const rightSidebar = document.getElementById('desktop-right-sidebar');
+      const mobileDock = document.getElementById('mobile-thumb-dock');
+      if (leftSidebar) leftSidebar.style.display = 'none';
+      if (rightSidebar) rightSidebar.style.display = 'none';
+      if (mobileDock) mobileDock.style.display = 'none';
       game.scene.stop('SkyHarvestScene');
       game.scene.start('AuctionScene');
     });
