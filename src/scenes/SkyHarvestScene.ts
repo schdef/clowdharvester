@@ -6,6 +6,8 @@ import { ProbePhysics, DrillHeadType } from '../core/ProbePhysics';
 import { ToolType } from '../ui/ToolBar';
 import { GameState } from '../core/GameState';
 import { CloudBand } from '../core/AuctionEngine';
+import { LogisticsNet, PipeStatus } from '../core/LogisticsNet';
+import { ResourceType } from '../core/MarketEconomy';
 import { t, onLanguageChange } from '../i18n/i18n';
 
 interface CloudInstance {
@@ -20,6 +22,14 @@ interface ExtractionDrop {
   speed: number;
   color: number;
   size: number;
+  resourceType: ResourceType;
+}
+
+interface PipeDrop {
+  t: number;          // 0.0 to 1.0 along pipe
+  speed: number;
+  color: number;
+  destination: 'leftTank' | 'rightTank' | 'harbor';
 }
 
 interface SonarPulse {
@@ -34,6 +44,7 @@ interface SonarPulse {
 export class SkyHarvestScene extends Phaser.Scene {
   // Core Simulation
   private cloudGrid!: CloudGrid;
+  private logisticsNet: LogisticsNet = new LogisticsNet();
   private activeTool: ToolType = 'drill';
   private activeDrillHead: DrillHeadType = 'fog';
 
@@ -47,6 +58,9 @@ export class SkyHarvestScene extends Phaser.Scene {
   private harborGraphics!: Phaser.GameObjects.Graphics;
   private harborDockLabel!: Phaser.GameObjects.Text;
   private harborBeacon!: Phaser.GameObjects.Arc;
+  private pipesGraphics!: Phaser.GameObjects.Graphics;
+  private tanksGraphics!: Phaser.GameObjects.Graphics;
+  private logisticsStatusGraphics!: Phaser.GameObjects.Graphics;
   private cableGraphics!: Phaser.GameObjects.Graphics;
   private channelGraphics!: Phaser.GameObjects.Graphics;
   private pocketsGraphics!: Phaser.GameObjects.Graphics;
@@ -63,11 +77,16 @@ export class SkyHarvestScene extends Phaser.Scene {
   private dockedPocket: CondensatePocket | null = null;
   private timeElapsed = 0;
 
-  // Extraction Droplets & Sonar
+  // Extraction Droplets, Pipe Droplets & Sonar
   private extractionDroplets: ExtractionDrop[] = [];
+  private pipeDroplets: PipeDrop[] = [];
   private activeSonarPulses: SonarPulse[] = [];
   private sonarHintText!: Phaser.GameObjects.Text;
   private sonarHintTimer = 0;
+
+  // Logistics & Network Status
+  private currentNetworkStatus: PipeStatus = 'idle';
+  private weekTimer = 0;
 
   // Starthilfe Tooltip
   private startHintContainer: Phaser.GameObjects.Container | null = null;
@@ -75,9 +94,13 @@ export class SkyHarvestScene extends Phaser.Scene {
   private hasDismissedStartHint = false;
   private langListener: (() => void) | null = null;
 
-  // Progress & Inventory
-  private tankStored = 0;
-  private readonly tankMax = 100;
+  // Progress & Inventory (Delegated to GameState for Phase 2)
+  private get tankStored(): number {
+    return GameState.getInstance().getTotalStored();
+  }
+  private get tankMax(): number {
+    return GameState.getInstance().getMaxStorageCapacity();
+  }
   private currentWeek = 1;
   private activeBand: CloudBand | null = null;
 
@@ -138,9 +161,13 @@ export class SkyHarvestScene extends Phaser.Scene {
     this.harborGraphics.setDepth(6);
     this.buildHarborSkyline(width, height);
 
+    // 7b. Conduit & Pipes Graphics (Slot 3)
+    this.pipesGraphics = this.add.graphics();
+    this.pipesGraphics.setDepth(7);
+
     // 8. Braided Suspension Cable Graphics
     this.cableGraphics = this.add.graphics();
-    this.cableGraphics.setDepth(7);
+    this.cableGraphics.setDepth(8);
 
     // 9. FX & Sonar Graphics
     this.fxGraphics = this.add.graphics();
@@ -148,6 +175,14 @@ export class SkyHarvestScene extends Phaser.Scene {
 
     // 10. Suspended Platform at Top
     this.createSuspendedPlatform(width);
+
+    // 10b. Floating Tank Balloons Graphics (Slot 4)
+    this.tanksGraphics = this.add.graphics();
+    this.tanksGraphics.setDepth(11);
+
+    // 10c. Logistics Status Graphics (Lock, Warning, Flowing Dots)
+    this.logisticsStatusGraphics = this.add.graphics();
+    this.logisticsStatusGraphics.setDepth(12);
 
     // 11. Interactive Drill Probe Head
     this.createProbeHead();
@@ -183,6 +218,10 @@ export class SkyHarvestScene extends Phaser.Scene {
         this.langListener = null;
       }
     });
+
+    // Initial display updates
+    this.updateCreditsDisplay();
+    this.updateTankDisplay();
 
     // Fade in camera
     this.cameras.main.fadeIn(500, 15, 23, 42);
@@ -501,7 +540,7 @@ export class SkyHarvestScene extends Phaser.Scene {
     }
 
     if (!this.harborDockLabel) {
-      this.harborDockLabel = this.add.text(width / 2, height - 35, t('harvest.harborTitle'), {
+      this.harborDockLabel = this.add.text(width / 2, height - 35, `${t('harvest.harborTitle')} • [${t('harbor.tabMarket')}]`, {
         fontFamily: 'system-ui, sans-serif',
         fontSize: '11px',
         color: '#64748B',
@@ -510,8 +549,29 @@ export class SkyHarvestScene extends Phaser.Scene {
       this.harborDockLabel.setDepth(7);
     } else {
       this.harborDockLabel.setPosition(width / 2, height - 35);
-      this.harborDockLabel.setText(t('harvest.harborTitle'));
+      this.harborDockLabel.setText(`${t('harvest.harborTitle')} • [${t('harbor.tabMarket')}]`);
     }
+
+    // Make harbor clickable to open Harbor Market & Outfitter modal
+    this.harborGraphics.setInteractive(
+      new Phaser.Geom.Rectangle(0, height - 70, width, 70),
+      Phaser.Geom.Rectangle.Contains
+    );
+    this.harborGraphics.removeAllListeners('pointerdown');
+    this.harborGraphics.on('pointerdown', () => {
+      AudioManager.getInstance().playUiClick();
+      this.game.events.emit('harbor:open', 'market');
+    });
+    if (this.harborGraphics.input) {
+      this.harborGraphics.input.cursor = 'pointer';
+    }
+
+    this.harborDockLabel.setInteractive({ useHandCursor: true });
+    this.harborDockLabel.removeAllListeners('pointerdown');
+    this.harborDockLabel.on('pointerdown', () => {
+      AudioManager.getInstance().playUiClick();
+      this.game.events.emit('harbor:open', 'market');
+    });
   }
 
   private createSuspendedPlatform(width: number): void {
@@ -551,10 +611,7 @@ export class SkyHarvestScene extends Phaser.Scene {
 
   private setupToolBarListeners(): void {
     this.game.events.on('tool:change', (tool: ToolType) => {
-      this.activeTool = tool;
-      if (tool !== 'drill') {
-        AudioManager.getInstance().stopDrill();
-      }
+      this.setTool(tool);
     });
 
     this.game.events.on('drillhead:change', (head: DrillHeadType) => {
@@ -567,6 +624,13 @@ export class SkyHarvestScene extends Phaser.Scene {
     this.activeTool = tool;
     if (tool !== 'drill') {
       AudioManager.getInstance().stopDrill();
+    }
+    if (tool === 'pipe') {
+      this.game.events.emit('harbor:open', 'upgrades');
+    } else if (tool === 'tank') {
+      this.game.events.emit('harbor:open', 'upgrades');
+    } else if (tool === 'sell') {
+      this.game.events.emit('harbor:open', 'market');
     }
   }
 
@@ -707,11 +771,25 @@ export class SkyHarvestScene extends Phaser.Scene {
     // 7. Render Suspended Braided Cable & Droplets
     this.renderCableAndDroplets(winchX, winchY, dt);
 
+    // 7b. Render Logistics Network (Condenser, Pipes, Tanks & Status)
+    this.renderLogisticsNetwork(winchX, 50 + swayY, dt);
+
     // 8. Render Sonar Waves & HUD
     this.renderSonarFX(dt);
 
     // 9. Update background drifting clouds
     this.updateClouds(width, dt);
+
+    // 10. Weekly advance & Evaporation cycle (every 60 seconds)
+    this.weekTimer += dt;
+    if (this.weekTimer >= 60.0) {
+      this.weekTimer = 0;
+      const gs = GameState.getInstance();
+      gs.advanceWeek();
+      this.currentWeek = gs.getData().week;
+      this.updateHeaderLabels();
+      this.updateTankDisplay();
+    }
   }
 
   /**
@@ -825,28 +903,48 @@ export class SkyHarvestScene extends Phaser.Scene {
         this.probeTargetY = this.probeCurrentY;
         this.probeHead.setPosition(this.probeCurrentX, this.probeCurrentY);
 
-        // Visible Extraction Flow
-        if (p.currentVolume > 0 && this.tankStored < this.tankMax) {
-          const rate = 14.0;
-          const extracted = this.cloudGrid.extractFromPocket(p.id, rate, dt);
-          this.tankStored = Math.min(this.tankMax, this.tankStored + extracted);
-          this.updateTankDisplay();
+        // Visible Extraction Flow via Core Logistics Net (Phase 2)
+        const gs = GameState.getInstance();
+        const upgrades = gs.getUpgrades();
+        const condenserRate = LogisticsNet.getCondenserRate(upgrades.condenserLevel);
+        const pipeCapacity = LogisticsNet.getPipeCapacity(upgrades.pipeLevel);
+        const effectiveFlow = this.logisticsNet.calculateEffectiveFlow(condenserRate, pipeCapacity);
 
-          // Spawn sparkling beads traveling up cable
-          if (Math.random() < dt * 7.0) {
-            let color: number = ColorPalette.midZone.condensateDropNum;
-            if (p.resourceType === 'frost') color = ColorPalette.highZone.turquoiseCrystalNum;
-            if (p.resourceType === 'storm') color = ColorPalette.lowZone.glowGoldNum;
+        const totalStored = gs.getTotalStored();
+        const maxCapacity = gs.getMaxStorageCapacity();
+        const availableSpace = Math.max(0, maxCapacity - totalStored);
 
-            this.extractionDroplets.push({
-              t: 0.0,
-              speed: 0.9 + Math.random() * 0.35,
-              color,
-              size: 4 + Math.random() * 2,
-            });
+        const isFull = availableSpace <= 0.05;
+        this.currentNetworkStatus = this.logisticsNet.getNetworkStatus(!isFull && p.currentVolume > 0, isFull);
+
+        if (!isFull && p.currentVolume > 0) {
+          const rateLimit = Math.min(effectiveFlow, availableSpace / Math.max(0.001, dt));
+          const extracted = this.cloudGrid.extractFromPocket(p.id, rateLimit, dt);
+          if (extracted > 0) {
+            gs.addResource(p.resourceType, extracted);
+            this.updateTankDisplay();
+
+            // Spawn sparkling beads traveling up cable
+            if (Math.random() < dt * 8.5) {
+              let color: number = ColorPalette.midZone.condensateDropNum;
+              if (p.resourceType === 'frost') color = ColorPalette.highZone.turquoiseCrystalNum;
+              if (p.resourceType === 'storm') color = ColorPalette.lowZone.glowGoldNum;
+
+              this.extractionDroplets.push({
+                t: 0.0,
+                speed: 0.95 + Math.random() * 0.35,
+                color,
+                size: 4 + Math.random() * 2,
+                resourceType: p.resourceType,
+              });
+            }
           }
         }
       }
+    } else {
+      const gs = GameState.getInstance();
+      const isFull = gs.getTotalStored() >= gs.getMaxStorageCapacity() - 0.05;
+      this.currentNetworkStatus = this.logisticsNet.getNetworkStatus(false, isFull);
     }
   }
 
@@ -974,8 +1072,7 @@ export class SkyHarvestScene extends Phaser.Scene {
 
       if (drop.t >= 1.0) {
         AudioManager.getInstance().playExtractDrop();
-        GameState.getInstance().addCredits(1);
-        this.updateCreditsDisplay();
+        this.spawnPipeDroplet(drop.color);
         this.extractionDroplets.splice(i, 1);
         continue;
       }
@@ -986,6 +1083,214 @@ export class SkyHarvestScene extends Phaser.Scene {
       this.cableGraphics.fillStyle(0xFFFFFF, 0.8);
       this.cableGraphics.fillCircle(pt.x, pt.y, drop.size * 0.4);
     }
+  }
+
+  /**
+   * Spawns flowing pearl droplet traveling through platform pipes to tank balloons
+   */
+  private spawnPipeDroplet(color: number): void {
+    const dest = Math.random() < 0.5 ? 'leftTank' : 'rightTank';
+    this.pipeDroplets.push({
+      t: 0.0,
+      speed: 1.4 + Math.random() * 0.4,
+      color,
+      destination: dest,
+    });
+  }
+
+  /**
+   * Renders the complete Logistics Network (Phase 2):
+   * Condenser unit on platform, floating tank balloons on flanks with fill gauges,
+   * pipelines connecting condenser to tanks and harbor, flowing droplet particles,
+   * and visual status indicators (active dots, full lock symbol 🔒, blocked warning triangle ⚠️).
+   */
+  private renderLogisticsNetwork(platformX: number, platformY: number, dt: number): void {
+    this.pipesGraphics.clear();
+    this.tanksGraphics.clear();
+    this.logisticsStatusGraphics.clear();
+
+    const gs = GameState.getInstance();
+    const upgrades = gs.getUpgrades();
+    const inventory = gs.getInventory();
+    const totalStored = gs.getTotalStored();
+    const maxCapacity = gs.getMaxStorageCapacity();
+    const fillRatio = Math.min(1.0, totalStored / maxCapacity);
+    const width = this.cameras.main.width;
+    const height = this.cameras.main.height;
+
+    // Tank Ballon dimensions & coordinates (scales with tank upgrade level)
+    const tankRadius = 14 + upgrades.tankLevel * 4;
+    const leftTankX = platformX - 70 - (upgrades.tankLevel - 1) * 3;
+    const rightTankX = platformX + 70 + (upgrades.tankLevel - 1) * 3;
+    const leftTankY = platformY + Math.sin(this.timeElapsed * 1.8) * 2;
+    const rightTankY = platformY + Math.sin(this.timeElapsed * 1.8 + 1.2) * 2;
+
+    // 1. Structural suspension struts from platform to balloon tanks
+    this.pipesGraphics.lineStyle(1.5, 0x475569, 0.65);
+    this.pipesGraphics.lineBetween(platformX - 40, platformY, leftTankX, leftTankY);
+    this.pipesGraphics.lineBetween(platformX + 40, platformY, rightTankX, rightTankY);
+
+    // 2. Pipelines (Slot 3)
+    const manifoldX = platformX;
+    const manifoldY = platformY + 8;
+
+    const leftPipeCurve = new Phaser.Curves.QuadraticBezier(
+      new Phaser.Math.Vector2(manifoldX, manifoldY),
+      new Phaser.Math.Vector2(platformX - 35, platformY + 16),
+      new Phaser.Math.Vector2(leftTankX, leftTankY + tankRadius * 0.5)
+    );
+
+    const rightPipeCurve = new Phaser.Curves.QuadraticBezier(
+      new Phaser.Math.Vector2(manifoldX, manifoldY),
+      new Phaser.Math.Vector2(platformX + 35, platformY + 16),
+      new Phaser.Math.Vector2(rightTankX, rightTankY + tankRadius * 0.5)
+    );
+
+    const harborPipeCurve = new Phaser.Curves.QuadraticBezier(
+      new Phaser.Math.Vector2(rightTankX, rightTankY + tankRadius * 0.5),
+      new Phaser.Math.Vector2(width - 45, height * 0.5),
+      new Phaser.Math.Vector2(width - 90, height - 70)
+    );
+
+    // Pipe stroke styling based on status
+    if (this.currentNetworkStatus === 'blocked') {
+      this.pipesGraphics.lineStyle(2, 0xF59E0B, 0.9);
+    } else if (this.currentNetworkStatus === 'full') {
+      this.pipesGraphics.lineStyle(2.5, 0x64748B, 0.85);
+    } else if (this.currentNetworkStatus === 'active') {
+      const glow = 0.75 + Math.sin(this.timeElapsed * 7) * 0.25;
+      this.pipesGraphics.lineStyle(3, 0x38BDF8, glow);
+    } else {
+      this.pipesGraphics.lineStyle(2, 0x334155, 0.6);
+    }
+
+    const ptsLeft = leftPipeCurve.getPoints(16);
+    const ptsRight = rightPipeCurve.getPoints(16);
+    const ptsHarbor = harborPipeCurve.getPoints(24);
+    this.pipesGraphics.strokePoints(ptsLeft);
+    this.pipesGraphics.strokePoints(ptsRight);
+    this.pipesGraphics.strokePoints(ptsHarbor);
+
+    // Pipe Droplets (pearl particles traveling in pipes)
+    for (let i = this.pipeDroplets.length - 1; i >= 0; i--) {
+      const drop = this.pipeDroplets[i];
+      drop.t += drop.speed * dt;
+      if (drop.t >= 1.0) {
+        this.pipeDroplets.splice(i, 1);
+        continue;
+      }
+      const curve = drop.destination === 'leftTank' ? leftPipeCurve : rightPipeCurve;
+      const pt = curve.getPoint(drop.t);
+      this.pipesGraphics.fillStyle(drop.color, 0.95);
+      this.pipesGraphics.fillCircle(pt.x, pt.y, 3.5);
+      this.pipesGraphics.fillStyle(0xFFFFFF, 0.8);
+      this.pipesGraphics.fillCircle(pt.x, pt.y, 1.5);
+    }
+
+    // Active flowing dots (fließende Punkte) along the pipes
+    if (this.currentNetworkStatus === 'active') {
+      for (let dot = 0; dot < 4; dot++) {
+        const tVal = ((this.timeElapsed * 1.5 + dot * 0.25) % 1.0);
+        const ptL = leftPipeCurve.getPoint(tVal);
+        const ptR = rightPipeCurve.getPoint(tVal);
+        this.pipesGraphics.fillStyle(0x7DD3FC, 0.8);
+        this.pipesGraphics.fillCircle(ptL.x, ptL.y, 2.5);
+        this.pipesGraphics.fillCircle(ptR.x, ptR.y, 2.5);
+      }
+    }
+
+    // 3. Floating Balloon Tanks (Slot 4)
+    let dominantColor: number = ColorPalette.midZone.condensateDropNum;
+    if (inventory.frost > inventory.skywater && inventory.frost > inventory.storm) {
+      dominantColor = ColorPalette.highZone.turquoiseCrystalNum;
+    } else if (inventory.storm > inventory.skywater && inventory.storm > inventory.frost) {
+      dominantColor = ColorPalette.lowZone.glowGoldNum;
+    }
+
+    const drawTank = (bx: number, by: number) => {
+      // Outer balloon hull
+      this.tanksGraphics.fillStyle(0x0F172A, 0.88);
+      this.tanksGraphics.fillCircle(bx, by, tankRadius);
+      this.tanksGraphics.lineStyle(1.5, 0x64748B, 0.8);
+      this.tanksGraphics.strokeCircle(bx, by, tankRadius);
+
+      // Fluid fill level
+      if (fillRatio > 0.02) {
+        const effectiveFillRadius = tankRadius * Math.min(1.0, 0.35 + fillRatio * 0.65);
+        this.tanksGraphics.fillStyle(dominantColor, 0.85);
+        this.tanksGraphics.fillCircle(bx, by + (tankRadius - effectiveFillRadius) * 0.35, effectiveFillRadius);
+      }
+
+      // Glass specular highlight arc
+      this.tanksGraphics.lineStyle(1.5, 0xFFFFFF, 0.5);
+      this.tanksGraphics.beginPath();
+      this.tanksGraphics.arc(bx - tankRadius * 0.3, by - tankRadius * 0.3, tankRadius * 0.5, -Math.PI * 0.7, -Math.PI * 0.1);
+      this.tanksGraphics.stroke();
+
+      // Brass bottom valve collar
+      this.tanksGraphics.fillStyle(ColorPalette.uiHarbor.brassNum, 0.95);
+      this.tanksGraphics.fillRect(bx - 3, by + tankRadius - 1, 6, 4);
+    };
+
+    drawTank(leftTankX, leftTankY);
+    drawTank(rightTankX, rightTankY);
+
+    // 4. Platform Condenser Unit
+    // Housing
+    this.tanksGraphics.fillStyle(ColorPalette.uiHarbor.darkSlateNum, 0.95);
+    this.tanksGraphics.fillRoundedRect(platformX - 16, platformY - 8, 32, 14, 3);
+    this.tanksGraphics.lineStyle(1.5, ColorPalette.uiHarbor.brassNum, 0.9);
+    this.tanksGraphics.strokeRoundedRect(platformX - 16, platformY - 8, 32, 14, 3);
+
+    // Condenser Coils (visual cue for condenser level)
+    for (let c = 0; c < upgrades.condenserLevel; c++) {
+      this.tanksGraphics.lineStyle(1.5, 0x38BDF8, 0.8);
+      this.tanksGraphics.lineBetween(platformX - 10 + c * 8, platformY - 6, platformX - 10 + c * 8, platformY + 4);
+    }
+
+    // 5. Logistics Status Symbol (aktiv = fließende Punkte, voll = Schloss, blockiert = Warndreieck)
+    const statusX = platformX;
+    const statusY = platformY + 24;
+
+    if (this.currentNetworkStatus === 'full') {
+      // Schloss-Symbol (Lock icon 🔒)
+      // Shackle
+      this.logisticsStatusGraphics.lineStyle(2, 0xF59E0B, 1.0);
+      this.logisticsStatusGraphics.beginPath();
+      this.logisticsStatusGraphics.arc(statusX, statusY - 5, 5, -Math.PI, 0);
+      this.logisticsStatusGraphics.stroke();
+      // Body
+      this.logisticsStatusGraphics.fillStyle(0xF59E0B, 1.0);
+      this.logisticsStatusGraphics.fillRoundedRect(statusX - 7, statusY - 3, 14, 11, 2);
+      // Keyhole
+      this.logisticsStatusGraphics.fillStyle(0x0F172A, 1.0);
+      this.logisticsStatusGraphics.fillCircle(statusX, statusY + 2, 1.8);
+    } else if (this.currentNetworkStatus === 'blocked') {
+      // Warndreieck (Warning triangle ⚠️)
+      this.logisticsStatusGraphics.fillStyle(0xF59E0B, 1.0);
+      this.logisticsStatusGraphics.fillTriangle(statusX, statusY - 9, statusX - 8, statusY + 6, statusX + 8, statusY + 6);
+      this.logisticsStatusGraphics.fillStyle(0x0F172A, 1.0);
+      this.logisticsStatusGraphics.fillRect(statusX - 1, statusY - 4, 2, 5);
+      this.logisticsStatusGraphics.fillCircle(statusX, statusY + 3.5, 1.2);
+    } else if (this.currentNetworkStatus === 'active') {
+      // Flowing green/cyan pulse
+      const dotPulse = 0.6 + Math.sin(this.timeElapsed * 10) * 0.4;
+      this.logisticsStatusGraphics.fillStyle(0x10B981, dotPulse);
+      this.logisticsStatusGraphics.fillCircle(statusX, statusY, 4.5);
+    } else {
+      // Idle standby dot
+      this.logisticsStatusGraphics.fillStyle(0x475569, 0.6);
+      this.logisticsStatusGraphics.fillCircle(statusX, statusY, 3);
+    }
+  }
+
+  private updateHeaderLabels(): void {
+    const seasonEl = document.getElementById('header-season-label');
+    const weekEl = document.getElementById('header-week-label');
+    const gs = GameState.getInstance().getData();
+    if (seasonEl) seasonEl.textContent = `${t('header.season')} ${gs.season}`;
+    if (weekEl) weekEl.textContent = `${t('header.week')} ${gs.week}`;
+    this.updateCreditsDisplay();
   }
 
   /**

@@ -159,6 +159,7 @@ const filesToAudit = [
   'src/ui/DesktopRadar.ts',
   'src/ui/MarketTicker.ts',
   'src/ui/TutorialModal.ts',
+  'src/ui/HarborModal.ts',
   'src/main.ts',
 ];
 

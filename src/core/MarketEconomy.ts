@@ -25,8 +25,20 @@ export class MarketEconomy {
     return this.rates[resource];
   }
 
+  public getPrice(resource: ResourceType): number {
+    return this.rates[resource].currentPrice;
+  }
+
+  public getBasePrice(resource: ResourceType): number {
+    return this.rates[resource].basePrice;
+  }
+
+  public getAllRates(): Record<ResourceType, MarketRate> {
+    return { ...this.rates };
+  }
+
   /**
-   * Applies weekly evaporation to stored inventory
+   * Applies weekly evaporation to stored inventory (2% per week)
    */
   public applyEvaporation(storedAmount: number): number {
     return storedAmount * (1 - MarketEconomy.EVAPORATION_RATE);
@@ -36,10 +48,11 @@ export class MarketEconomy {
    * Market feedback: Selling a batch of 10 units temporarily lowers price by 2%
    */
   public executeSale(resource: ResourceType, units: number): number {
+    if (units <= 0) return 0;
     const rate = this.rates[resource];
+    const earnings = units * rate.currentPrice;
     const batches = Math.floor(units / 10);
     const priceDropFactor = Math.pow(0.98, batches);
-    const earnings = units * rate.currentPrice;
 
     rate.currentPrice = Math.max(rate.basePrice * 0.4, rate.currentPrice * priceDropFactor);
     rate.priceHistory.push(rate.currentPrice);
@@ -56,5 +69,14 @@ export class MarketEconomy {
       rate.currentPrice += diff * 0.05;
       rate.priceHistory.push(rate.currentPrice);
     });
+  }
+
+  public resetRates(): void {
+    this.rates.frost.currentPrice = 25;
+    this.rates.frost.priceHistory = [25];
+    this.rates.skywater.currentPrice = 10;
+    this.rates.skywater.priceHistory = [10];
+    this.rates.storm.currentPrice = 18;
+    this.rates.storm.priceHistory = [18];
   }
 }

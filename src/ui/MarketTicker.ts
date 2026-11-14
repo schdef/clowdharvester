@@ -1,6 +1,7 @@
 import { t, onLanguageChange } from '../i18n/i18n';
 import { ColorPalette } from '../gfx/ColorPalette';
 import { AudioManager } from '../audio/AudioManager';
+import { GameState } from '../core/GameState';
 
 export interface CommodityPrice {
   nameKey: string;
@@ -45,6 +46,34 @@ export class MarketTicker {
 
   public render(): void {
     if (!this.containerElement) return;
+
+    const market = GameState.getInstance().getMarketEconomy();
+    const frostPrice = market.getPrice('frost');
+    const skywaterPrice = market.getPrice('skywater');
+    const stormPrice = market.getPrice('storm');
+
+    const livePrices: CommodityPrice[] = this.prices.length === 3 && this.prices[0].price !== 25
+      ? this.prices
+      : [
+          {
+            nameKey: 'zones.resourceHigh',
+            price: frostPrice,
+            change: ((frostPrice - market.getBasePrice('frost')) / market.getBasePrice('frost')) * 100,
+            color: ColorPalette.highZone.turquoiseCrystal,
+          },
+          {
+            nameKey: 'zones.resourceMid',
+            price: skywaterPrice,
+            change: ((skywaterPrice - market.getBasePrice('skywater')) / market.getBasePrice('skywater')) * 100,
+            color: ColorPalette.midZone.condensateDrop,
+          },
+          {
+            nameKey: 'zones.resourceLow',
+            price: stormPrice,
+            change: ((stormPrice - market.getBasePrice('storm')) / market.getBasePrice('storm')) * 100,
+            color: ColorPalette.lowZone.glowGold,
+          },
+        ];
 
     if (this.isCollapsed) {
       // Compact collapsed mini-tab
@@ -123,7 +152,7 @@ export class MarketTicker {
 
         <!-- Commodity Prices -->
         <div class="space-y-2">
-          ${this.prices.map((c) => {
+          ${livePrices.map((c) => {
             const isPositive = c.change >= 0;
             const changeColor = isPositive ? 'text-emerald-400' : 'text-rose-400';
             const changeSign = isPositive ? '+' : '';

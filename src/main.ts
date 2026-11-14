@@ -8,6 +8,7 @@ import { ToolBar } from './ui/ToolBar';
 import { DesktopRadar } from './ui/DesktopRadar';
 import { MarketTicker } from './ui/MarketTicker';
 import { TutorialModal } from './ui/TutorialModal';
+import { HarborModal } from './ui/HarborModal';
 import { AudioManager } from './audio/AudioManager';
 import { getLanguage, setLanguage, t, onLanguageChange } from './i18n/i18n';
 import { GameState } from './core/GameState';
@@ -38,6 +39,7 @@ const toolBar = new ToolBar();
 const desktopRadar = new DesktopRadar();
 const marketTicker = new MarketTicker();
 const tutorialModal = TutorialModal.getInstance();
+const harborModal = HarborModal.getInstance();
 
 // Mount UI Shell Components
 function initUI(): void {
@@ -61,6 +63,11 @@ function initUI(): void {
   if (tutorialContainer) {
     tutorialModal.mount(tutorialContainer);
     tutorialModal.checkAutoOpen();
+  }
+
+  const harborContainer = document.getElementById('harbor-modal-container');
+  if (harborContainer) {
+    harborModal.mount(harborContainer);
   }
 
   // Setup Tutorial Button
@@ -166,10 +173,21 @@ document.addEventListener('DOMContentLoaded', () => {
   // Forward Toolbar and Drill Head events to Phaser game & active scene
   toolBar.onToolChange((tool) => {
     game.events.emit('tool:change', tool);
+    if (tool === 'sell') {
+      harborModal.open('market');
+    } else if (tool === 'pipe') {
+      harborModal.open('upgrades', 'pipe');
+    } else if (tool === 'tank') {
+      harborModal.open('upgrades', 'tank');
+    }
     const scene = game.scene.getScene('SkyHarvestScene') as SkyHarvestScene | undefined;
     if (scene && typeof scene.setTool === 'function') {
       scene.setTool(tool);
     }
+  });
+
+  game.events.on('harbor:open', (tab?: 'market' | 'upgrades') => {
+    harborModal.open(tab ?? 'market');
   });
 
   toolBar.onDrillHeadChange((head) => {

@@ -457,6 +457,56 @@ export class AudioManager {
   }
 
   /**
+   * Play cheerful harbor commodity sale chime (coin chimes)
+   */
+  public playHarborSale(): void {
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    const notes = [659.25, 830.61, 987.77, 1318.51]; // E5, G#5, B5, E6
+    notes.forEach((freq, idx) => {
+      if (!this.ctx) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now + idx * 0.05);
+
+      gain.gain.setValueAtTime(0.08, now + idx * 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.05 + 0.28);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now + idx * 0.05);
+      osc.stop(now + idx * 0.05 + 0.3);
+    });
+
+    this.triggerHaptic([10, 20, 30]);
+  }
+
+  /**
+   * Play mechanical brass upgrade ratchet sound
+   */
+  public playUpgradeBought(): void {
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(320, now);
+    osc.frequency.exponentialRampToValueAtTime(740, now + 0.16);
+
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.23);
+
+    this.triggerHaptic([25, 40]);
+  }
+
+  /**
    * Taptic / Haptic feedback wrapper
    */
   public triggerHaptic(pattern: number | number[]): void {
