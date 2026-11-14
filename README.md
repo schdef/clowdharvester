@@ -97,7 +97,8 @@ npm run preview
 | :--- | :--- | :--- |
 | **Sonde absenken / steuern** | Ziehen mit Finger | Ziehen mit linker Maustaste |
 | **Werkzeug 1: Windfühler-Scan** | Tippen auf Slot 1 | Taste `1` |
-| **Werkzeug 2: Bohrkopf wechseln** | Tippen auf Slot 2 | Taste `2` |
+| **Werkzeug 2: Bohrkopf-Tool** | Tippen auf Slot 2 | Taste `2` |
+| **Bohrkopf wechseln (Eis / Nebel / Ladung)** | Tippen auf Kopf-Pills | `Q` (Eis), `W` (Nebel), `E` (Ladung) oder Slot 2 wiederholt |
 | **Werkzeug 3: Rohrleitungen** | Tippen auf Slot 3 | Taste `3` |
 | **Werkzeug 4: Tankballons** | Tippen auf Slot 4 | Taste `4` |
 | **Werkzeug 5: Hafen / Verkauf** | Tippen auf Slot 5 | Taste `5` |
