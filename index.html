@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="de" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#0F172A" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Cloud Harvesters</title>
+  </head>
+  <body class="bg-slate-950 text-slate-200 h-[100dvh] w-full overflow-hidden select-none">
+    <div id="app" class="relative w-full h-[100dvh] flex flex-col lg:flex-row overflow-hidden">
+      
+      <!-- DESKTOP LEFT SIDEBAR (Widescreen >= 1024px) -->
+      <aside 
+        id="desktop-left-sidebar" 
+        class="hidden lg:flex flex-col w-80 shrink-0 border-r border-slate-800 bg-slate-900/90 backdrop-blur-md p-4 z-20 overflow-y-auto"
+        aria-label="Radar und Wetterbericht"
+      >
+        <!-- Mounted by DesktopRadar -->
+      </aside>
+
+      <!-- CENTRAL GAME AREA -->
+      <main class="relative flex-1 flex flex-col h-full overflow-hidden items-center justify-between">
+        
+        <!-- TOP STATUS HEADER (Mobile & Desktop) -->
+        <header id="status-header" class="w-full z-30 shrink-0 bg-slate-900/80 backdrop-blur-md border-b border-slate-800/80 px-3 py-2 flex items-center justify-between text-xs font-mono">
+          <!-- Left: Week & Season -->
+          <div class="flex items-center space-x-3">
+            <span class="font-bold text-sky-200 tracking-wider">CLOUD HARVESTERS</span>
+            <div class="flex items-center space-x-1.5 px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700/60">
+              <span id="header-season-label">Saison 1</span>
+              <span class="text-slate-500">•</span>
+              <span id="header-week-label" class="text-amber-400 font-bold">Woche 1</span>
+            </div>
+          </div>
+
+          <!-- Center: Credits & Harvester Storage -->
+          <div class="flex items-center space-x-3">
+            <div class="flex items-center space-x-1 text-emerald-400 font-semibold px-2 py-0.5 rounded bg-emerald-950/60 border border-emerald-800/40">
+              <span>CR</span>
+              <span id="header-credits">250</span>
+            </div>
+            <div class="hidden sm:flex items-center space-x-1 text-sky-300 px-2 py-0.5 rounded bg-sky-950/60 border border-sky-800/40">
+              <span>TANK</span>
+              <span id="header-tank">0 / 100</span>
+            </div>
+          </div>
+
+          <!-- Right: Controls (Audio, Language, Speed) -->
+          <div class="flex items-center space-x-2">
+            <!-- Language Switcher -->
+            <button 
+              id="btn-lang-toggle" 
+              class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition text-[11px] font-semibold cursor-pointer"
+              title="Sprache wechseln / Toggle Language"
+            >
+              DE
+            </button>
+
+            <!-- Audio Mute Toggle -->
+            <button 
+              id="btn-audio-toggle" 
+              class="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition cursor-pointer"
+              title="Audio an/aus"
+            >
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+              </svg>
+            </button>
+
+            <!-- Speed Toggle -->
+            <button 
+              id="btn-speed-toggle" 
+              class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 font-mono transition text-[11px] cursor-pointer"
+              title="Simulations-Geschwindigkeit"
+            >
+              1.0x
+            </button>
+          </div>
+        </header>
+
+        <!-- PHASER CANVAS CONTAINER -->
+        <div id="game-container" class="relative flex-1 w-full h-full flex items-center justify-center overflow-hidden">
+          <div id="phaser-game" class="w-full h-full flex items-center justify-center"></div>
+        </div>
+
+        <!-- MOBILE BOTTOM THUMB DOCK (Visible on Mobile / Compact screens < 1024px) -->
+        <footer 
+          id="mobile-thumb-dock" 
+          class="lg:hidden w-full z-30 shrink-0 px-2 py-2 bg-slate-900/90 backdrop-blur-md border-t border-slate-800/80 safe-area-bottom"
+          aria-label="Werkzeugleiste"
+        >
+          <!-- Mounted by ToolBar on mobile -->
+        </footer>
+      </main>
+
+      <!-- DESKTOP RIGHT SIDEBAR (Widescreen >= 1024px) -->
+      <aside 
+        id="desktop-right-sidebar" 
+        class="hidden lg:flex flex-col w-80 shrink-0 border-l border-slate-800 bg-slate-900/90 backdrop-blur-md p-4 z-20 overflow-y-auto"
+        aria-label="Hafenmarkt und Council Dossier"
+      >
+        <!-- Mounted by MarketTicker -->
+      </aside>
+
+    </div>
+
+    <!-- Application Bootstrap -->
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,69 @@
+{
+  "app": {
+    "title": "Cloud Harvesters",
+    "subtitle": "Schürfen & Himmelslogistik"
+  },
+  "header": {
+    "season": "Saison",
+    "week": "Woche",
+    "credits": "Credits",
+    "speed": "Tempo",
+    "pause": "Pause",
+    "resume": "Weiter",
+    "lang": "Sprache"
+  },
+  "zones": {
+    "high": "Hochzone",
+    "highDesc": "Kristallin & Dünn",
+    "mid": "Mittelzone",
+    "midDesc": "Ausgeglichen & Sanft",
+    "low": "Tiefzone",
+    "lowDesc": "Stürmisch & Dicht",
+    "resourceHigh": "Frostkristalle",
+    "resourceMid": "Skywater",
+    "resourceLow": "Sturmladung"
+  },
+  "tools": {
+    "scan": "Scan",
+    "scanDesc": "Windfühler & Echodrohne",
+    "drill": "Bohrkopf",
+    "drillDesc": "Elastische Kondensat-Sonde",
+    "pipe": "Rohr",
+    "pipeDesc": "Kondensat-Förderleitung",
+    "tank": "Speicher",
+    "tankDesc": "Schwebender Tankballon",
+    "sell": "Hafen",
+    "sellDesc": "Marktverkauf im Himmelsdock"
+  },
+  "radar": {
+    "title": "4-Wochen-Windradar",
+    "forecast": "Strömungsprognose",
+    "pendulumCycle": "Pendeldrift-Zyklus",
+    "layerAnalysis": "Schichtanalyse",
+    "windSpeed": "Windtempo",
+    "direction": "Richtung",
+    "east": "Ostwärts",
+    "west": "Westwärts"
+  },
+  "market": {
+    "title": "Hafen-Börse",
+    "ticker": "Rohstoffkurse",
+    "currentPrice": "Aktueller Kurs",
+    "evaporationRate": "Verdunstung: 2%/Woche",
+    "councilDossier": "Sky-Council Dossier",
+    "shares": "Ratsanteile",
+    "rivals": "Rivalen",
+    "activityLog": "Logbuch"
+  },
+  "rivals": {
+    "daredevil": "Der Draufgänger",
+    "calculator": "Der Rechner",
+    "tracker": "Die Spürnase"
+  },
+  "status": {
+    "docked": "Gedockt",
+    "drifting": "Driftend",
+    "harvesting": "Fördernd",
+    "idle": "Bereit"
+  }
+}

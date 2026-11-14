@@ -1,0 +1,69 @@
+{
+  "app": {
+    "title": "Cloud Harvesters",
+    "subtitle": "Mining & Sky Logistics"
+  },
+  "header": {
+    "season": "Season",
+    "week": "Week",
+    "credits": "Credits",
+    "speed": "Speed",
+    "pause": "Pause",
+    "resume": "Resume",
+    "lang": "Language"
+  },
+  "zones": {
+    "high": "High Zone",
+    "highDesc": "Crystalline & Thin",
+    "mid": "Mid Zone",
+    "midDesc": "Balanced & Gentle",
+    "low": "Low Zone",
+    "lowDesc": "Stormy & Dense",
+    "resourceHigh": "Frost Crystals",
+    "resourceMid": "Skywater",
+    "resourceLow": "Storm Charge"
+  },
+  "tools": {
+    "scan": "Scan",
+    "scanDesc": "Wind Sensor & Echo Drone",
+    "drill": "Drill",
+    "drillDesc": "Elastic Condensate Probe",
+    "pipe": "Pipe",
+    "pipeDesc": "Condensate Transfer Line",
+    "tank": "Tank",
+    "tankDesc": "Floating Storage Balloon",
+    "sell": "Harbor",
+    "sellDesc": "Market Exchange at Sky Dock"
+  },
+  "radar": {
+    "title": "4-Week Wind Radar",
+    "forecast": "Flow Forecast",
+    "pendulumCycle": "Pendulum Drift Cycle",
+    "layerAnalysis": "Layer Analysis",
+    "windSpeed": "Wind Speed",
+    "direction": "Direction",
+    "east": "Eastbound",
+    "west": "Westbound"
+  },
+  "market": {
+    "title": "Harbor Exchange",
+    "ticker": "Commodity Ticker",
+    "currentPrice": "Current Price",
+    "evaporationRate": "Evaporation: 2%/week",
+    "councilDossier": "Sky-Council Dossier",
+    "shares": "Council Shares",
+    "rivals": "Rivals",
+    "activityLog": "Logbook"
+  },
+  "rivals": {
+    "daredevil": "The Daredevil",
+    "calculator": "The Calculator",
+    "tracker": "The Tracker"
+  },
+  "status": {
+    "docked": "Docked",
+    "drifting": "Drifting",
+    "harvesting": "Harvesting",
+    "idle": "Ready"
+  }
+}
