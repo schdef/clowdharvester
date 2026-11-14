@@ -117,7 +117,7 @@ npm run preview
 
 - [x] **Phase 0:** Project setup, build pipeline, design tokens & responsive shell (PWA & companion sidebars)
 - [x] **Phase 1 (P1):** Interactive probe, layer resistance, cloud fog carving & elastic pocket docking
-- [ ] **Phase 2 (P2):** Logistics network (condensers, pipes, storage balloons), harbor economy & evaporation
+- [x] **Phase 2 (P2):** Logistics network (condensers, pipes, storage balloons), harbor economy & evaporation
 - [x] **Phase 3 (P3):** Cloud band pre-season auction & 3 AI rivals (The Daredevil, The Calculator, The Tracker)
 - [ ] **Phase 4 (P4):** Sky-Council sessions (Weeks 4, 8, 12), 12-week season loop & campaign (3 regions)
 - [ ] **Phase 5:** PWA offline tuning, Capacitor native Android/iOS packaging & final sound mix
