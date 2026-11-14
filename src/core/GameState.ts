@@ -1,11 +1,13 @@
 /**
  * Cloud Harvesters - GameState
- * Central state container for the 12-week season progression, credits, logistics inventory, and upgrades.
+ * Central state container for the 12-week season progression, credits, logistics inventory, upgrades,
+ * and Sky-Council campaign state.
  */
 
 import { CloudBand } from './AuctionEngine';
 import { LogisticsNet, UpgradeEquipmentType } from './LogisticsNet';
 import { MarketEconomy, ResourceType } from './MarketEconomy';
+import { CouncilEngine, CampaignRegion } from './CouncilEngine';
 
 export interface InventoryState {
   frost: number;
@@ -26,8 +28,12 @@ export interface GameStateData {
   credits: number;
   storedVolume: number;
   councilShares: number;
-  region: 'spring_winds' | 'summer_drifts' | 'storm_season';
+  auroraShares: number;
+  region: CampaignRegion;
   stars: number;
+  seasonStars: number;
+  gameSpeed: number;
+  weekTimer: number;
   activeCloudBand: CloudBand | null;
   wonBands: CloudBand[];
   inventory: InventoryState;
@@ -40,17 +46,23 @@ export class GameState {
   private static instance: GameState;
   private data: GameStateData;
   private marketEconomy: MarketEconomy;
+  private councilEngine: CouncilEngine;
 
   private constructor() {
     this.marketEconomy = new MarketEconomy();
-    this.data = this.loadState() ?? {
+    const loaded = this.loadState();
+    this.data = loaded ?? {
       season: 1,
       week: 1,
       credits: 1000,
       storedVolume: 0,
       councilShares: 0,
+      auroraShares: 0,
       region: 'spring_winds',
       stars: 0,
+      seasonStars: 0,
+      gameSpeed: 1.0,
+      weekTimer: 0.0,
       activeCloudBand: null,
       wonBands: [],
       inventory: {
@@ -65,6 +77,10 @@ export class GameState {
         droneLevel: 1,
       },
     };
+
+    // Ensure council engine matches loaded credits
+    this.councilEngine = new CouncilEngine(this.data.credits);
+    this.syncCouncilState();
   }
 
   public static getInstance(): GameState {
@@ -82,6 +98,10 @@ export class GameState {
     return this.marketEconomy;
   }
 
+  public getCouncilEngine(): CouncilEngine {
+    return this.councilEngine;
+  }
+
   public getInventory(): Readonly<InventoryState> {
     return this.data.inventory;
   }
@@ -96,6 +116,38 @@ export class GameState {
 
   public getMaxStorageCapacity(): number {
     return LogisticsNet.getTankCapacity(this.data.upgrades.tankLevel);
+  }
+
+  public getGameSpeed(): number {
+    return this.data.gameSpeed;
+  }
+
+  public setGameSpeed(speed: number): void {
+    this.data.gameSpeed = speed;
+    this.saveState();
+  }
+
+  public getWeekTimer(): number {
+    return this.data.weekTimer;
+  }
+
+  public setWeekTimer(t: number): void {
+    this.data.weekTimer = t;
+  }
+
+  public getRegion(): CampaignRegion {
+    return this.data.region;
+  }
+
+  public setRegion(region: CampaignRegion): void {
+    this.data.region = region;
+    this.saveState();
+  }
+
+  public static getRegionForSeason(season: number): CampaignRegion {
+    if (season <= 3) return 'spring_winds';
+    if (season <= 6) return 'summer_drifts';
+    return 'storm_season';
   }
 
   /**
@@ -208,12 +260,14 @@ export class GameState {
 
   public addCredits(amount: number): void {
     this.data.credits += amount;
+    this.councilEngine.setPlayerCredits(this.data.credits);
     this.saveState();
   }
 
   public deductCredits(amount: number): boolean {
     if (this.data.credits >= amount) {
       this.data.credits -= amount;
+      this.councilEngine.setPlayerCredits(this.data.credits);
       this.saveState();
       return true;
     }
@@ -222,6 +276,23 @@ export class GameState {
 
   public setCredits(amount: number): void {
     this.data.credits = Math.max(0, amount);
+    this.councilEngine.setPlayerCredits(this.data.credits);
+    this.saveState();
+  }
+
+  public addCouncilShares(amount: number): void {
+    this.data.councilShares += amount;
+    const player = this.councilEngine.getBidder('player');
+    if (player) {
+      player.sharesWon += amount;
+    }
+    this.saveState();
+  }
+
+  public addAuroraShares(amount: number = 1): void {
+    this.data.auroraShares += amount;
+    this.data.councilShares += amount;
+    this.councilEngine.awardAuroraShare('player', amount);
     this.saveState();
   }
 
@@ -245,29 +316,75 @@ export class GameState {
     return [...this.data.wonBands];
   }
 
+  public recordSeasonStars(stars: number): void {
+    this.data.seasonStars = stars;
+    this.data.stars += stars;
+    this.saveState();
+  }
+
   public resetSeason(startingCredits = 1000): void {
     this.data.week = 1;
+    this.data.weekTimer = 0;
     this.data.credits = startingCredits;
     this.data.storedVolume = 0;
+    this.data.councilShares = 0;
+    this.data.auroraShares = 0;
     this.data.inventory = { frost: 0, skywater: 0, storm: 0 };
     this.data.upgrades = { condenserLevel: 1, pipeLevel: 1, tankLevel: 1, droneLevel: 1 };
     this.data.activeCloudBand = null;
     this.data.wonBands = [];
     this.marketEconomy.resetRates();
+    this.councilEngine.initBidders(startingCredits);
+    this.saveState();
+  }
+
+  /**
+   * Resets equipment & inventory for the next season, preserving accumulated stars,
+   * updating region accordingly.
+   */
+  public startNextSeason(startingCredits = 1000): void {
+    const nextSeason = this.data.season + 1;
+    this.data.season = nextSeason;
+    this.data.week = 1;
+    this.data.weekTimer = 0;
+    this.data.credits = startingCredits;
+    this.data.storedVolume = 0;
+    this.data.councilShares = 0;
+    this.data.auroraShares = 0;
+    this.data.seasonStars = 0;
+    this.data.region = GameState.getRegionForSeason(nextSeason);
+    this.data.inventory = { frost: 0, skywater: 0, storm: 0 };
+    this.data.upgrades = { condenserLevel: 1, pipeLevel: 1, tankLevel: 1, droneLevel: 1 };
+    this.data.activeCloudBand = null;
+    this.data.wonBands = [];
+    this.marketEconomy.resetRates();
+    this.councilEngine.initBidders(startingCredits);
     this.saveState();
   }
 
   public advanceWeek(): void {
     this.applyEvaporation();
     this.marketEconomy.stepWeeklyRecovery();
+    this.councilEngine.stepRivalsWeeklyIncome();
 
     if (this.data.week < 12) {
       this.data.week += 1;
     } else {
+      // Loop or wait for season summary
       this.data.week = 1;
       this.data.season += 1;
+      this.data.region = GameState.getRegionForSeason(this.data.season);
     }
     this.saveState();
+  }
+
+  private syncCouncilState(): void {
+    const player = this.councilEngine.getBidder('player');
+    if (player) {
+      player.credits = this.data.credits;
+      player.sharesWon = this.data.councilShares - this.data.auroraShares;
+      player.auroraShares = this.data.auroraShares;
+    }
   }
 
   private saveState(): void {
@@ -286,6 +403,13 @@ export class GameState {
         // Ensure nested structure defaults
         parsed.inventory = parsed.inventory ?? { frost: 0, skywater: 0, storm: 0 };
         parsed.upgrades = parsed.upgrades ?? { condenserLevel: 1, pipeLevel: 1, tankLevel: 1, droneLevel: 1 };
+        parsed.councilShares = parsed.councilShares ?? 0;
+        parsed.auroraShares = parsed.auroraShares ?? 0;
+        parsed.stars = parsed.stars ?? 0;
+        parsed.seasonStars = parsed.seasonStars ?? 0;
+        parsed.gameSpeed = parsed.gameSpeed ?? 1.0;
+        parsed.weekTimer = parsed.weekTimer ?? 0.0;
+        parsed.region = parsed.region ?? GameState.getRegionForSeason(parsed.season ?? 1);
         return parsed;
       }
     } catch {

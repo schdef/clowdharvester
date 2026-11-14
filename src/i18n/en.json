@@ -14,7 +14,8 @@
     "auction": "Auction",
     "help": "HELP",
     "radar": "RADAR",
-    "market": "MARKET"
+    "market": "MARKET",
+    "council": "COUNCIL"
   },
   "zones": {
     "zone": "Zone",
@@ -314,5 +315,74 @@
       "auctionText": "Click [🔨 AUCTION] in the header anytime to place bids on 6 procedural cloud bands. AI rivals bid against you with distinct personalities!",
       "tip": "🌟 Rule the cloud seas and build your harvesting syndicate. Good luck, Harvester!"
     }
+  },
+  "council": {
+    "title": "Sky-Council of the Cloud Cities",
+    "session": "Council Session",
+    "sessionSub": "Auction of 10 Council Shares",
+    "dossierTitle": "Sky-Council Dossier & Schedule",
+    "sharesToAuction": "Council Shares at Auction",
+    "totalShares": "Total Council Shares: 30",
+    "yourBids": "Your Sealed Bid",
+    "requestedShares": "Requested Shares",
+    "bidPerShare": "Bid per Share",
+    "totalCommitment": "Total Commitment",
+    "availableCredits": "Available Liquid Credits",
+    "submitBid": "Submit Sealed Bid",
+    "passBid": "Pass Bid (0 CR)",
+    "revealTitle": "Bid Opening & Tally",
+    "revealingEnvelopes": "Council members are unsealing their bid envelopes...",
+    "sharesWonNotice": "Sky-Council Shares Awarded!",
+    "continueSeason": "Return to Season",
+    "toSummary": "Proceed to Season Summary",
+    "scheduleTitle": "Season Council Calendar",
+    "session1": "Session 1 (Week 4): 10 Shares",
+    "session2": "Session 2 (Week 8): 10 Shares",
+    "session3": "Session 3 (Week 12): 10 Shares",
+    "completed": "Completed",
+    "upcoming": "Upcoming",
+    "activeNow": "Active Now",
+    "auroraBonus": "Aurora Bonus Share (+1)",
+    "auroraFoundNotice": "✨ Aurora Discovery Retrieved! +1 Sky-Council Share awarded!",
+    "bidsOverview": "Submitted Bids & Allocations",
+    "currentStandings": "Current Council Distribution",
+    "noBid": "No Bid",
+    "instructions": "In Weeks 4, 8, and 12, the Sky-Council auctions 10 shares in sealed bidding. The highest bid per share takes priority until all 10 shares are awarded!",
+    "rivals": {
+      "daredevil": "The Daredevil",
+      "daredevilDesc": "Bids aggressively & early. Neglects long-term reserves.",
+      "calculator": "The Calculator",
+      "calculatorDesc": "Hoards capital in early weeks. Strikes in Sessions 2 & 3 with maximum EV.",
+      "tracker": "The Tracker",
+      "trackerDesc": "Tracks atmospheric Aurora anomalies and bids tactically."
+    }
+  },
+  "summary": {
+    "title": "Season Finale & Sky-Council Standings",
+    "subtitle": "12-Week Expedition Concluded",
+    "rankHeader": "Rank",
+    "participantHeader": "Pioneer",
+    "sharesHeader": "Shares",
+    "creditsHeader": "Cash Reserves (CR)",
+    "awardHeader": "Award",
+    "tieBreakerNotice": "Tie-Breaker: Cash reserves in Credits decide ties.",
+    "rank1Title": "Glorious Victory! 🥇",
+    "rank1Desc": "You command the Sky-Council with a governing majority! The cloud cities look to your leadership and economic mastery.",
+    "rank2Title": "Outstanding Season! 🥈",
+    "rank2Desc": "You secure an influential seat on the Sky-Council, helping steer the destiny of the trade routes.",
+    "rank3Title": "Solid Performance! 🥉",
+    "rank3Desc": "You take your seat as an elected council member. Enough political capital to expand into the next sky region!",
+    "rank4Title": "Narrowly Missed! 🎗️",
+    "rank4Desc": "The rivals acquired more shares this season. But the open sky is forgiving — embark afresh on your next voyage!",
+    "starsEarned": "Stars Earned",
+    "nextSeasonBtn": "Start Next Season",
+    "retrySeasonBtn": "Retry Season",
+    "regionUnlocked": "New Region Unlocked:",
+    "noGameOver": "No Game Over: Your earned stars and campaign progress are permanently saved!"
+  },
+  "regions": {
+    "spring_winds": "Spring Winds",
+    "summer_drifts": "Summer Drifts",
+    "storm_season": "Storm Season"
   }
 }

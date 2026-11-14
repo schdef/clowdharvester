@@ -9,6 +9,8 @@ import { DesktopRadar } from './ui/DesktopRadar';
 import { MarketTicker } from './ui/MarketTicker';
 import { TutorialModal } from './ui/TutorialModal';
 import { HarborModal } from './ui/HarborModal';
+import { CouncilModal } from './ui/CouncilModal';
+import { SummaryModal } from './ui/SummaryModal';
 import { AudioManager } from './audio/AudioManager';
 import { getLanguage, setLanguage, t, onLanguageChange } from './i18n/i18n';
 import { GameState } from './core/GameState';
@@ -32,6 +34,12 @@ let currentSeason = 1;
 let currentWeek = 1;
 let currentSpeedIndex = 1;
 const speedOptions = ['0.5x', '1.0x', '2.0x', 'PAUSE'];
+const speedMultiplierMap: Record<string, number> = {
+  '0.5x': 0.5,
+  '1.0x': 1.0,
+  '2.0x': 2.0,
+  'PAUSE': 0,
+};
 
 // Initialize UI Managers
 const responsive = ResponsiveLayout.getInstance();
@@ -40,6 +48,8 @@ const desktopRadar = new DesktopRadar();
 const marketTicker = new MarketTicker();
 const tutorialModal = TutorialModal.getInstance();
 const harborModal = HarborModal.getInstance();
+const councilModal = CouncilModal.getInstance();
+const summaryModal = SummaryModal.getInstance();
 
 // Mount UI Shell Components
 function initUI(): void {
@@ -70,11 +80,30 @@ function initUI(): void {
     harborModal.mount(harborContainer);
   }
 
+  const councilContainer = document.getElementById('council-modal-container');
+  if (councilContainer) {
+    councilModal.mount(councilContainer);
+  }
+
+  const summaryContainer = document.getElementById('summary-modal-container');
+  if (summaryContainer) {
+    summaryModal.mount(summaryContainer);
+  }
+
   // Setup Tutorial Button
   const tutorialBtn = document.getElementById('btn-tutorial-toggle');
   if (tutorialBtn) {
     tutorialBtn.addEventListener('click', () => {
       tutorialModal.open(1);
+    });
+  }
+
+  // Setup Council Button (Dossier Mode)
+  const councilBtn = document.getElementById('btn-council-toggle');
+  if (councilBtn) {
+    councilBtn.addEventListener('click', () => {
+      AudioManager.getInstance().playUiClick();
+      councilModal.open('dossier');
     });
   }
 
@@ -105,7 +134,9 @@ function initUI(): void {
     speedBtn.addEventListener('click', () => {
       AudioManager.getInstance().playUiClick();
       currentSpeedIndex = (currentSpeedIndex + 1) % speedOptions.length;
-      speedBtn.textContent = speedOptions[currentSpeedIndex];
+      const chosen = speedOptions[currentSpeedIndex];
+      speedBtn.textContent = chosen;
+      GameState.getInstance().setGameSpeed(speedMultiplierMap[chosen]);
     });
   }
 
@@ -115,13 +146,18 @@ function initUI(): void {
     const weekEl = document.getElementById('header-week-label');
     const creditsEl = document.getElementById('header-credits');
     const auctionLabelEl = document.getElementById('header-auction-label');
+    const councilLabelEl = document.getElementById('header-council-label');
+    const councilBadgeEl = document.getElementById('header-council-badge');
     const helpLabelEl = document.getElementById('header-help-label');
     const langBtn = document.getElementById('btn-lang-toggle');
 
-    if (seasonEl) seasonEl.textContent = `${t('header.season')} ${currentSeason}`;
-    if (weekEl) weekEl.textContent = `${t('header.week')} ${currentWeek}`;
-    if (creditsEl) creditsEl.textContent = GameState.getInstance().getData().credits.toString();
+    const gs = GameState.getInstance().getData();
+    if (seasonEl) seasonEl.textContent = `${t('header.season')} ${gs.season}`;
+    if (weekEl) weekEl.textContent = `${t('header.week')} ${gs.week}/12`;
+    if (creditsEl) creditsEl.textContent = gs.credits.toString();
     if (auctionLabelEl) auctionLabelEl.textContent = t('header.auction').toUpperCase();
+    if (councilLabelEl) councilLabelEl.textContent = t('header.council');
+    if (councilBadgeEl) councilBadgeEl.textContent = `${gs.councilShares}/30`;
     if (helpLabelEl) helpLabelEl.textContent = t('header.help');
     if (langBtn) langBtn.textContent = getLanguage().toUpperCase();
   };

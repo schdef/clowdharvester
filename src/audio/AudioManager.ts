@@ -507,6 +507,73 @@ export class AudioManager {
   }
 
   /**
+   * Play authoritative Council Gavel (Holzhammer-Schlag) for Sky-Council sessions
+   */
+  public playCouncilGavel(): void {
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+
+    // Two rapid thuds (tap... BANG)
+    [0, 0.16].forEach((offset, idx) => {
+      if (!this.ctx) return;
+      const t = now + offset;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const filter = this.ctx.createBiquadFilter();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(idx === 0 ? 150 : 115, t);
+      osc.frequency.exponentialRampToValueAtTime(45, t + 0.13);
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(idx === 0 ? 800 : 1200, t);
+      filter.frequency.exponentialRampToValueAtTime(120, t + 0.13);
+
+      const amp = idx === 0 ? 0.22 : 0.38;
+      gain.gain.setValueAtTime(amp, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + (idx === 0 ? 0.12 : 0.22));
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(t);
+      osc.stop(t + (idx === 0 ? 0.13 : 0.24));
+    });
+
+    this.triggerHaptic([30, 40, 60]);
+  }
+
+  /**
+   * Play Council Share Won Fanfare (crystalline chime)
+   */
+  public playShareWon(): void {
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+
+    [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
+      if (!this.ctx) return;
+      const t = now + i * 0.08;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, t);
+
+      gain.gain.setValueAtTime(0.12, t);
+      gain.gain.exponentialRampToValueAtTime(0.0005, t + 0.55);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(t);
+      osc.stop(t + 0.6);
+    });
+
+    this.triggerHaptic([20, 20, 30]);
+  }
+
+  /**
    * Taptic / Haptic feedback wrapper
    */
   public triggerHaptic(pattern: number | number[]): void {

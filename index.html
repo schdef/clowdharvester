@@ -28,7 +28,11 @@
           <div class="flex items-center space-x-1.5 px-2 py-0.5 rounded bg-slate-800/90 text-slate-300 border border-slate-700/60">
             <span id="header-season-label">Saison 1</span>
             <span class="text-slate-500">•</span>
-            <span id="header-week-label" class="text-amber-400 font-bold">Woche 1</span>
+            <span id="header-week-label" class="text-amber-400 font-bold">Woche 1/12</span>
+            <div class="w-10 sm:w-16 h-1.5 bg-slate-700 rounded-full overflow-hidden ml-1 border border-slate-600/40">
+              <div id="header-week-progressbar" class="h-full bg-gradient-to-r from-amber-400 to-amber-300 transition-all duration-100" style="width: 0%"></div>
+            </div>
+            <span id="header-week-timer-text" class="text-[10px] text-slate-400 hidden md:inline">60s</span>
           </div>
         </div>
 
@@ -64,6 +68,17 @@
           >
             <span>🔨</span>
             <span id="header-auction-label">AUKTION</span>
+          </button>
+
+          <!-- Council Trigger Button -->
+          <button 
+            id="btn-council-toggle" 
+            class="px-2.5 py-1 rounded bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 border border-indigo-700/60 transition text-[11px] font-semibold cursor-pointer flex items-center space-x-1 shadow-sm"
+            title="Sky-Council Ratsdossier & Termine"
+          >
+            <span>🏛️</span>
+            <span id="header-council-label" class="hidden sm:inline">COUNCIL</span>
+            <span id="header-council-badge" class="px-1 py-0.2 text-[10px] bg-indigo-900/90 rounded text-amber-300 font-bold border border-indigo-700/50">0/30</span>
           </button>
 
           <!-- Language Switcher -->
@@ -130,6 +145,12 @@
 
       <!-- HARBOR MODAL OVERLAY (Mounted by HarborModal, Z-50) -->
       <div id="harbor-modal-container" class="relative z-50 pointer-events-auto"></div>
+
+      <!-- SKY-COUNCIL MODAL OVERLAY (Mounted by CouncilModal, Z-50) -->
+      <div id="council-modal-container" class="relative z-50 pointer-events-auto"></div>
+
+      <!-- SEASON SUMMARY MODAL OVERLAY (Mounted by SummaryModal, Z-50) -->
+      <div id="summary-modal-container" class="relative z-50 pointer-events-auto"></div>
 
     </div>
 

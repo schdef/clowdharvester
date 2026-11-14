@@ -14,7 +14,8 @@
     "auction": "Auktion",
     "help": "HILFE",
     "radar": "RADAR",
-    "market": "BÖRSE"
+    "market": "BÖRSE",
+    "council": "COUNCIL"
   },
   "zones": {
     "zone": "Zone",
@@ -314,5 +315,74 @@
       "auctionText": "Klicke jederzeit oben auf [🔨 AUKTION], um Gebote auf 6 prozedurale Wolkenbänder abzugeben. Rivalen wie Der Draufgänger, Der Rechner und Die Spürnase bieten mit eigener KI-Persönlichkeit gegen dich!",
       "tip": "🌟 Meistere den Himmel und baue dein Schürf-Imperium auf. Viel Erfolg, Harvester!"
     }
+  },
+  "council": {
+    "title": "Sky-Council der Wolkenstädte",
+    "session": "Rats-Sitzung",
+    "sessionSub": "Versteigerung von 10 Ratsanteilen",
+    "dossierTitle": "Sky-Council Ratsdossier & Termine",
+    "sharesToAuction": "Ratsanteile zur Versteigerung",
+    "totalShares": "Ratsanteile insgesamt: 30",
+    "yourBids": "Dein verdecktes Gebot",
+    "requestedShares": "Gewünschte Anteile",
+    "bidPerShare": "Gebot pro Anteil",
+    "totalCommitment": "Gesamteinsatz",
+    "availableCredits": "Verfügbares Barvermögen",
+    "submitBid": "Verdecktes Gebot einreichen",
+    "passBid": "Gebot überspringen (0 CR)",
+    "revealTitle": "Gebotseröffnung & Auszählung",
+    "revealingEnvelopes": "Die Ratsmitglieder öffnen die versiegelten Umschläge...",
+    "sharesWonNotice": "Zuschlag im Sky-Council erteilt!",
+    "continueSeason": "Weiter zur Saison",
+    "toSummary": "Zur Saison-Abschluss-Wertung",
+    "scheduleTitle": "Sitzungskalender der Saison",
+    "session1": "Sitzung 1 (Woche 4): 10 Anteile",
+    "session2": "Sitzung 2 (Woche 8): 10 Anteile",
+    "session3": "Sitzung 3 (Woche 12): 10 Anteile",
+    "completed": "Abgeschlossen",
+    "upcoming": "Bevorstehend",
+    "activeNow": "Jetzt aktiv",
+    "auroraBonus": "Aurora-Sonderanteil (+1)",
+    "auroraFoundNotice": "✨ Aurora-Sonderfund geborgen! +1 Sky-Council Ratsanteil erhalten!",
+    "bidsOverview": "Eingereichte Gebote & Zuschläge",
+    "currentStandings": "Aktuelle Ratsverteilung",
+    "noBid": "Kein Gebot",
+    "instructions": "Im Sky-Council werden in Woche 4, 8 und 12 jeweils 10 Anteile versteigert. Alle Gebote sind verdeckt. Wer das höchste Gebot pro Anteil abgibt, erhält vorrangig den Zuschlag!",
+    "rivals": {
+      "daredevil": "Der Draufgänger",
+      "daredevilDesc": "Bietet ungestüm & früh. Vernachlässigt langfristige Reserven.",
+      "calculator": "Der Rechner",
+      "calculatorDesc": "Hortet Kapital in frühen Wochen. Schlägt in Sitzung 2 & 3 mit maximalem EV zu.",
+      "tracker": "Die Spürnase",
+      "trackerDesc": "Spürt atmosphärische Aurora-Anomalien auf und bietet situativ."
+    }
+  },
+  "summary": {
+    "title": "Saison-Abschluss & Sky-Council Wertung",
+    "subtitle": "12 Wochen Expedition beendet",
+    "rankHeader": "Rang",
+    "participantHeader": "Pionier",
+    "sharesHeader": "Anteile",
+    "creditsHeader": "Barvermögen (CR)",
+    "awardHeader": "Auszeichnung",
+    "tieBreakerNotice": "Tie-Breaker: Barvermögen in Credits entscheidet bei Gleichstand.",
+    "rank1Title": "Glänzender Triumph! 🥇",
+    "rank1Desc": "Du kontrollierst den Sky-Council mit absoluter Stimmenmehrheit! Die Wolkenstädte folgen deiner wirtschaftlichen und strategischen Führung.",
+    "rank2Title": "Hervorragende Saison! 🥈",
+    "rank2Desc": "Du sicherst dir einen einflussreichen Sitz im Sky-Council und lenkst die Zukunft der Himmelsrouten maßgeblich mit.",
+    "rank3Title": "Erfolgreicher Einzug! 🥉",
+    "rank3Desc": "Du nimmst als Ratsmitglied Platz. Genug Rückhalt für die nächste anspruchsvolle Himmelsregion!",
+    "rank4Title": "Knapp verfehlt! 🎗️",
+    "rank4Desc": "Die Rivalen haben dieses Mal mehr Anteile ersteigert. Doch der Himmel vergibt Fehler – starte frisch in die nächste Runde!",
+    "starsEarned": "Verdiente Sterne",
+    "nextSeasonBtn": "Nächste Saison starten",
+    "retrySeasonBtn": "Saison wiederholen",
+    "regionUnlocked": "Neue Region freigeschaltet:",
+    "noGameOver": "Kein Game Over: Deine gesammelten Sterne und Kampagnen-Fortschritte bleiben dauerhaft erhalten!"
+  },
+  "regions": {
+    "spring_winds": "Frühlingswinde",
+    "summer_drifts": "Sommerzüge",
+    "storm_season": "Sturmsaison"
   }
 }

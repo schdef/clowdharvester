@@ -45,6 +45,8 @@ export interface CondensatePocket {
   currentVolume: number;
   isDepleted: boolean;
   valuePerUnit: number;
+  isAurora?: boolean;
+  hasAwardedAurora?: boolean;
 }
 
 export class CloudGrid {
@@ -204,6 +206,8 @@ export class CloudGrid {
         currentVolume: 90,
         isDepleted: false,
         valuePerUnit: 18,
+        isAurora: true,
+        hasAwardedAurora: false,
       },
     ];
   }

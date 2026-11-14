@@ -9,6 +9,10 @@ import { CloudBand } from '../core/AuctionEngine';
 import { LogisticsNet, PipeStatus } from '../core/LogisticsNet';
 import { ResourceType } from '../core/MarketEconomy';
 import { t, onLanguageChange } from '../i18n/i18n';
+import { CouncilModal } from '../ui/CouncilModal';
+import { SummaryModal } from '../ui/SummaryModal';
+import { HarborModal } from '../ui/HarborModal';
+import { TutorialModal } from '../ui/TutorialModal';
 
 interface CloudInstance {
   sprite: Phaser.GameObjects.Sprite;
@@ -741,7 +745,13 @@ export class SkyHarvestScene extends Phaser.Scene {
   }
 
   public update(_time: number, delta: number): void {
-    const dt = Math.min(0.1, delta / 1000);
+    const isModalOpen = CouncilModal.getInstance().isOpen() || SummaryModal.getInstance().isOpen() || HarborModal.getInstance().isOpen() || TutorialModal.getInstance().isOpen();
+    const gameSpeed = isModalOpen ? 0 : GameState.getInstance().getGameSpeed();
+    if (gameSpeed <= 0) {
+      return;
+    }
+
+    const dt = Math.min(0.1, (delta / 1000) * gameSpeed);
     this.timeElapsed += dt;
     const width = this.cameras.main.width;
 
@@ -782,13 +792,41 @@ export class SkyHarvestScene extends Phaser.Scene {
 
     // 10. Weekly advance & Evaporation cycle (every 60 seconds)
     this.weekTimer += dt;
+    GameState.getInstance().setWeekTimer(this.weekTimer);
+
+    // Real-time Header Progress Bar Update
+    const weekProgress = Math.min(1.0, this.weekTimer / 60.0);
+    const progressBar = document.getElementById('header-week-progressbar');
+    const timerText = document.getElementById('header-week-timer-text');
+    if (progressBar) {
+      progressBar.style.width = `${(weekProgress * 100).toFixed(1)}%`;
+    }
+    if (timerText) {
+      timerText.textContent = `${Math.ceil(60 - this.weekTimer)}s`;
+    }
+
     if (this.weekTimer >= 60.0) {
       this.weekTimer = 0;
+      GameState.getInstance().setWeekTimer(0);
       const gs = GameState.getInstance();
+      const prevWeek = gs.getData().week;
       gs.advanceWeek();
-      this.currentWeek = gs.getData().week;
+      const newWeek = gs.getData().week;
+      this.currentWeek = newWeek;
       this.updateHeaderLabels();
       this.updateTankDisplay();
+
+      // Trigger Council Session in Week 4, 8, and 12
+      if (newWeek === 4 || newWeek === 8 || newWeek === 12) {
+        if (!gs.getCouncilEngine().isSessionCompleted(newWeek)) {
+          CouncilModal.getInstance().open('session', newWeek);
+        }
+      }
+
+      // Trigger Season Finale Summary after Week 12 completes
+      if (prevWeek === 12) {
+        SummaryModal.getInstance().open();
+      }
     }
   }
 
@@ -878,6 +916,16 @@ export class SkyHarvestScene extends Phaser.Scene {
           alpha: 1.0,
           color: ColorPalette.highZone.frostGlowNum,
         });
+
+        // Check Aurora Discovery Bonus (+1 Council Share)
+        if (p.isAurora && !p.hasAwardedAurora) {
+          p.hasAwardedAurora = true;
+          const gs = GameState.getInstance();
+          gs.addAuroraShares(1);
+          AudioManager.getInstance().playShareWon();
+          this.showAuroraNotification();
+          this.updateHeaderLabels();
+        }
         break;
       }
     }
@@ -1032,6 +1080,12 @@ export class SkyHarvestScene extends Phaser.Scene {
       if (this.isDocked && this.dockedPocket === p) {
         this.pocketsGraphics.lineStyle(2, ColorPalette.uiHarbor.brassNum, 0.95);
         this.pocketsGraphics.strokeCircle(p.x, p.y, effectiveRadius + 4);
+      }
+
+      // Aurora Shimmering Ring
+      if (p.isAurora) {
+        this.pocketsGraphics.lineStyle(2.5, ColorPalette.lowZone.auroraPinkNum, 0.85);
+        this.pocketsGraphics.strokeCircle(p.x, p.y, effectiveRadius + 8 + Math.sin(this.timeElapsed * 4) * 2);
       }
     }
   }
@@ -1287,10 +1341,33 @@ export class SkyHarvestScene extends Phaser.Scene {
   private updateHeaderLabels(): void {
     const seasonEl = document.getElementById('header-season-label');
     const weekEl = document.getElementById('header-week-label');
+    const councilBadge = document.getElementById('header-council-badge');
     const gs = GameState.getInstance().getData();
     if (seasonEl) seasonEl.textContent = `${t('header.season')} ${gs.season}`;
-    if (weekEl) weekEl.textContent = `${t('header.week')} ${gs.week}`;
+    if (weekEl) weekEl.textContent = `${t('header.week')} ${gs.week}/12`;
+    if (councilBadge) councilBadge.textContent = `${gs.councilShares}/30`;
     this.updateCreditsDisplay();
+  }
+
+  private showAuroraNotification(): void {
+    const width = this.cameras.main.width;
+    const notify = this.add.text(width / 2, 175, t('council.auroraFoundNotice'), {
+      fontFamily: 'monospace',
+      fontSize: '13px',
+      color: '#F472B6',
+      backgroundColor: '#1E1B4B',
+      padding: { x: 12, y: 6 },
+    });
+    notify.setOrigin(0.5);
+    notify.setDepth(45);
+    this.tweens.add({
+      targets: notify,
+      y: 125,
+      alpha: 0,
+      duration: 2600,
+      ease: 'Power1',
+      onComplete: () => notify.destroy(),
+    });
   }
 
   /**

@@ -43,6 +43,10 @@ export class TutorialModal {
     }
   }
 
+  public isOpen(): boolean {
+    return this.isVisible;
+  }
+
   public open(step = 1): void {
     this.currentStep = Math.max(1, Math.min(this.totalSteps, step));
     this.isVisible = true;

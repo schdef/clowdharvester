@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "jiti tests/phase1-verification.ts && jiti tests/phase2-verification.ts && jiti tests/phase3-verification.ts && jiti tests/ux-audio-tutorial-verification.ts && jiti tests/ui-flow-localization-verification.ts"
+    "test": "jiti tests/phase1-verification.ts && jiti tests/phase2-verification.ts && jiti tests/phase3-verification.ts && jiti tests/phase4-verification.ts && jiti tests/ux-audio-tutorial-verification.ts && jiti tests/ui-flow-localization-verification.ts"
   },
   "dependencies": {
     "@capacitor/core": "^7.0.1",
