@@ -35,6 +35,20 @@
     "sell": "Harbor",
     "sellDesc": "Market Exchange at Sky Dock"
   },
+  "drillHeads": {
+    "ice": "Ice Drill",
+    "iceDesc": "High Zone • Frost Crystals",
+    "fog": "Fog Harvester",
+    "fogDesc": "Mid Zone • Skywater",
+    "charge": "Charge Spike",
+    "chargeDesc": "Low Zone • Storm Charge"
+  },
+  "scan": {
+    "hot": "VERY HOT! 🔥 Target in range",
+    "warmer": "WARMER! ⚡ Cloud reading rising",
+    "colder": "COLD... ❄ No signal nearby",
+    "hint": "Wind Sensor Ping active"
+  },
   "radar": {
     "title": "4-Week Wind Radar",
     "forecast": "Flow Forecast",

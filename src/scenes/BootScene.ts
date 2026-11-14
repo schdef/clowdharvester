@@ -127,32 +127,159 @@ export class BootScene extends Phaser.Scene {
       }
     }
 
-    // 5. Drill Probe Head Texture
-    if (!this.textures.exists('probe-head')) {
-      const probeCanvas = this.textures.createCanvas('probe-head', 36, 48);
-      if (probeCanvas) {
-        const ctx = probeCanvas.getContext();
-        // Probe cone diamond
-        ctx.fillStyle = ColorPalette.uiHarbor.brass;
+    // 5. Drill Probe Head Textures (Nebelfänger, Eisbohrer, Ladungsspitze)
+    // 5a. Eisbohrer ('probe-head-ice') - Diamond crystal sharp tip
+    if (!this.textures.exists('probe-head-ice')) {
+      const pCanvas = this.textures.createCanvas('probe-head-ice', 40, 52);
+      if (pCanvas) {
+        const ctx = pCanvas.getContext();
+        // Brass / Dark Slate Housing
+        ctx.fillStyle = ColorPalette.uiHarbor.darkSlate;
         ctx.beginPath();
-        ctx.moveTo(18, 44);
-        ctx.lineTo(32, 18);
-        ctx.lineTo(18, 6);
-        ctx.lineTo(4, 18);
+        ctx.roundRect(10, 6, 20, 14, 4);
+        ctx.fill();
+        ctx.strokeStyle = ColorPalette.uiHarbor.brass;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Crystalline Ice Drill Diamond
+        ctx.fillStyle = ColorPalette.highZone.iceBlue;
+        ctx.beginPath();
+        ctx.moveTo(20, 48); // Sharp crystal point
+        ctx.lineTo(34, 18);
+        ctx.lineTo(20, 10);
+        ctx.lineTo(6, 18);
         ctx.closePath();
         ctx.fill();
 
-        // Center jewel / sensor
-        ctx.fillStyle = ColorPalette.highZone.turquoiseCrystal;
+        // Crystal facet highlights
+        ctx.strokeStyle = ColorPalette.highZone.turquoiseCrystal;
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(18, 22, 5, 0, Math.PI * 2);
+        ctx.moveTo(20, 10);
+        ctx.lineTo(20, 48);
+        ctx.moveTo(6, 18);
+        ctx.lineTo(20, 26);
+        ctx.lineTo(34, 18);
+        ctx.stroke();
+
+        // Glowing cyan core
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(20, 24, 3, 0, Math.PI * 2);
         ctx.fill();
 
-        probeCanvas.refresh();
+        pCanvas.refresh();
       }
     }
 
-    // 6. Condensate Droplet / Sparkle particle
+    // 5b. Nebelfänger ('probe-head-fog') - Scoop / Vortex Mesh Intake
+    if (!this.textures.exists('probe-head-fog')) {
+      const pCanvas = this.textures.createCanvas('probe-head-fog', 40, 52);
+      if (pCanvas) {
+        const ctx = pCanvas.getContext();
+        // Brass Housing
+        ctx.fillStyle = ColorPalette.uiHarbor.darkSlate;
+        ctx.beginPath();
+        ctx.roundRect(10, 6, 20, 14, 4);
+        ctx.fill();
+        ctx.strokeStyle = ColorPalette.uiHarbor.brass;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Aerodynamic Scoop Cone
+        ctx.fillStyle = ColorPalette.midZone.pastelAzure;
+        ctx.beginPath();
+        ctx.moveTo(20, 46);
+        ctx.quadraticCurveTo(34, 30, 32, 18);
+        ctx.lineTo(8, 18);
+        ctx.quadraticCurveTo(6, 30, 20, 46);
+        ctx.fill();
+
+        // Vortex intake rings
+        ctx.strokeStyle = ColorPalette.midZone.condensateDrop;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(20, 24, 8, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(20, 34, 5, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Azure core
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(20, 24, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        pCanvas.refresh();
+      }
+    }
+
+    // 5c. Ladungsspitze ('probe-head-charge') - Electric Prong Needle
+    if (!this.textures.exists('probe-head-charge')) {
+      const pCanvas = this.textures.createCanvas('probe-head-charge', 40, 52);
+      if (pCanvas) {
+        const ctx = pCanvas.getContext();
+        // Dark Violet Housing
+        ctx.fillStyle = ColorPalette.lowZone.twilightViolet;
+        ctx.beginPath();
+        ctx.roundRect(10, 6, 20, 14, 4);
+        ctx.fill();
+        ctx.strokeStyle = ColorPalette.uiHarbor.brass;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Forked needle spikes
+        ctx.fillStyle = ColorPalette.lowZone.glowGold;
+        ctx.beginPath();
+        ctx.moveTo(14, 18);
+        ctx.lineTo(12, 48);
+        ctx.lineTo(17, 30);
+        ctx.lineTo(20, 50); // Center longest needle
+        ctx.lineTo(23, 30);
+        ctx.lineTo(28, 48);
+        ctx.lineTo(26, 18);
+        ctx.closePath();
+        ctx.fill();
+
+        // Golden spark sensor
+        ctx.fillStyle = ColorPalette.lowZone.auroraPink;
+        ctx.beginPath();
+        ctx.arc(20, 22, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(20, 22, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        pCanvas.refresh();
+      }
+    }
+
+    // Default probe head alias
+    if (!this.textures.exists('probe-head')) {
+      // Alias to probe-head-fog
+      const pCanvas = this.textures.createCanvas('probe-head', 40, 52);
+      if (pCanvas) {
+        const ctx = pCanvas.getContext();
+        ctx.fillStyle = ColorPalette.uiHarbor.brass;
+        ctx.beginPath();
+        ctx.moveTo(20, 46);
+        ctx.lineTo(34, 18);
+        ctx.lineTo(20, 6);
+        ctx.lineTo(6, 18);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = ColorPalette.highZone.turquoiseCrystal;
+        ctx.beginPath();
+        ctx.arc(20, 22, 5, 0, Math.PI * 2);
+        ctx.fill();
+        pCanvas.refresh();
+      }
+    }
+
+    // 6. Condensate Droplet / Sparkle particles
     if (!this.textures.exists('particle-drop')) {
       const partCanvas = this.textures.createCanvas('particle-drop', 16, 16);
       if (partCanvas) {
@@ -166,6 +293,23 @@ export class BootScene extends Phaser.Scene {
         ctx.arc(6, 6, 2, 0, Math.PI * 2);
         ctx.fill();
         partCanvas.refresh();
+      }
+    }
+
+    // 7. Gold spark particle
+    if (!this.textures.exists('particle-spark')) {
+      const sparkCanvas = this.textures.createCanvas('particle-spark', 16, 16);
+      if (sparkCanvas) {
+        const ctx = sparkCanvas.getContext();
+        ctx.fillStyle = ColorPalette.lowZone.glowGold;
+        ctx.beginPath();
+        ctx.arc(8, 8, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(8, 8, 2, 0, Math.PI * 2);
+        ctx.fill();
+        sparkCanvas.refresh();
       }
     }
   }

@@ -35,6 +35,20 @@
     "sell": "Hafen",
     "sellDesc": "Marktverkauf im Himmelsdock"
   },
+  "drillHeads": {
+    "ice": "Eisbohrer",
+    "iceDesc": "Hochzone • Frostkristalle",
+    "fog": "Nebelfänger",
+    "fogDesc": "Mittelzone • Skywater",
+    "charge": "Ladungsspitze",
+    "chargeDesc": "Tiefzone • Sturmladung"
+  },
+  "scan": {
+    "hot": "SEHR HEISS! 🔥 In Reichweite",
+    "warmer": "WÄRMER! ⚡ Wolkentemperatur steigt",
+    "colder": "KALT... ❄ Kein Signal im Nahbereich",
+    "hint": "Windfühler-Ping aktiv"
+  },
   "radar": {
     "title": "4-Wochen-Windradar",
     "forecast": "Strömungsprognose",

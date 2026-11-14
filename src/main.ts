@@ -123,6 +123,23 @@ document.addEventListener('DOMContentLoaded', () => {
   initUI();
   const game = new Phaser.Game(phaserConfig);
 
+  // Forward Toolbar and Drill Head events to Phaser game & active scene
+  toolBar.onToolChange((tool) => {
+    game.events.emit('tool:change', tool);
+    const scene = game.scene.getScene('SkyHarvestScene') as SkyHarvestScene | undefined;
+    if (scene && typeof scene.setTool === 'function') {
+      scene.setTool(tool);
+    }
+  });
+
+  toolBar.onDrillHeadChange((head) => {
+    game.events.emit('drillhead:change', head);
+    const scene = game.scene.getScene('SkyHarvestScene') as SkyHarvestScene | undefined;
+    if (scene && typeof scene.setDrillHead === 'function') {
+      scene.setDrillHead(head);
+    }
+  });
+
   // Resize handler to notify Phaser when layout adapts
   responsive.onLayoutChange(() => {
     game.scale.refresh();

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "jiti tests/phase1-verification.ts"
   },
   "dependencies": {
     "@capacitor/core": "^7.0.1",
