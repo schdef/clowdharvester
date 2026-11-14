@@ -574,6 +574,99 @@ export class AudioManager {
   }
 
   /**
+   * Play metallic coupling / valve opening sound for pipeline connections
+   */
+  public playValveOpen(): void {
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+
+    // Metallic clank (sine + triangle pitch drop)
+    const osc1 = this.ctx.createOscillator();
+    const gain1 = this.ctx.createGain();
+    osc1.type = 'triangle';
+    osc1.frequency.setValueAtTime(840, now);
+    osc1.frequency.exponentialRampToValueAtTime(320, now + 0.12);
+
+    gain1.gain.setValueAtTime(0.12, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+    osc1.connect(gain1);
+    gain1.connect(this.ctx.destination);
+    osc1.start(now);
+    osc1.stop(now + 0.19);
+
+    // Mechanical click / latch
+    const osc2 = this.ctx.createOscillator();
+    const gain2 = this.ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(1420, now + 0.04);
+    osc2.frequency.exponentialRampToValueAtTime(560, now + 0.15);
+
+    gain2.gain.setValueAtTime(0.08, now + 0.04);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+
+    osc2.connect(gain2);
+    gain2.connect(this.ctx.destination);
+    osc2.start(now + 0.04);
+    osc2.stop(now + 0.17);
+
+    this.triggerHaptic([18, 25]);
+  }
+
+  /**
+   * Play pressurized steam hiss / thruster release sound for platform relocation
+   */
+  public playSteamVent(): void {
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+
+    // White noise / resonant swoosh
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(480, now);
+    osc.frequency.exponentialRampToValueAtTime(140, now + 0.38);
+
+    gain.gain.setValueAtTime(0.09, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.43);
+
+    this.triggerHaptic([20, 30, 40]);
+  }
+
+  /**
+   * Play warning cue when rival taps into the same pocket (Tug-of-War contest)
+   */
+  public playTensionRise(): void {
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+
+    // Staccato warning intervals (330Hz and 466Hz - tritone tension)
+    [330, 466.16].forEach((freq, idx) => {
+      if (!this.ctx) return;
+      const t = now + idx * 0.08;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, t);
+
+      gain.gain.setValueAtTime(0.14, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.23);
+    });
+
+    this.triggerHaptic([25, 40, 25]);
+  }
+
+  /**
    * Taptic / Haptic feedback wrapper
    */
   public triggerHaptic(pattern: number | number[]): void {

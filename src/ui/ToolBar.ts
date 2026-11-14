@@ -3,6 +3,7 @@ import { t, onLanguageChange } from '../i18n/i18n';
 import { DrillHeadType } from '../core/ProbePhysics';
 
 export type ToolType = 'scan' | 'drill' | 'pipe' | 'tank' | 'sell';
+export type ScanToolType = 'wind_sensor' | 'echo_drone' | 'spectral_scan';
 
 export interface ToolDefinition {
   id: ToolType;
@@ -50,6 +51,50 @@ export const TOOLS: ToolDefinition[] = [
   },
 ];
 
+export interface ScanToolOption {
+  id: ScanToolType;
+  keyNum: string;
+  hotkey: string;
+  cost: number;
+  nameKey: string;
+  symbol: string;
+  colorClass: string;
+  borderClass: string;
+}
+
+export const SCAN_TOOLS: ScanToolOption[] = [
+  {
+    id: 'wind_sensor',
+    keyNum: '1',
+    hotkey: 'A',
+    cost: 50,
+    nameKey: 'scanTools.windSensor',
+    symbol: '📡',
+    colorClass: 'text-sky-300',
+    borderClass: 'border-sky-500/60 bg-sky-950/60',
+  },
+  {
+    id: 'echo_drone',
+    keyNum: '2',
+    hotkey: 'S',
+    cost: 150,
+    nameKey: 'scanTools.echoDrone',
+    symbol: '🚁',
+    colorClass: 'text-teal-300',
+    borderClass: 'border-teal-500/60 bg-teal-950/60',
+  },
+  {
+    id: 'spectral_scan',
+    keyNum: '3',
+    hotkey: 'D',
+    cost: 400,
+    nameKey: 'scanTools.spectralScan',
+    symbol: '🔬',
+    colorClass: 'text-purple-300',
+    borderClass: 'border-purple-500/60 bg-purple-950/60',
+  },
+];
+
 export interface DrillHeadOption {
   id: DrillHeadType;
   keyNum: string;
@@ -93,12 +138,16 @@ export const DRILL_HEADS: DrillHeadOption[] = [
 export class ToolBar {
   private activeTool: ToolType = 'drill';
   private activeDrillHead: DrillHeadType = 'fog';
+  private activeScanTool: ScanToolType = 'wind_sensor';
   private toolListeners: Set<(tool: ToolType) => void> = new Set();
   private headListeners: Set<(head: DrillHeadType) => void> = new Set();
+  private scanToolListeners: Set<(tool: ScanToolType) => void> = new Set();
   private containerElement: HTMLElement | null = null;
 
   constructor() {
-    window.addEventListener('keydown', this.handleKeyDown.bind(this));
+    if (typeof window !== 'undefined') {
+      window.addEventListener('keydown', this.handleKeyDown.bind(this));
+    }
     onLanguageChange(() => this.render());
   }
 
@@ -115,10 +164,19 @@ export class ToolBar {
     return this.activeDrillHead;
   }
 
+  public getActiveScanTool(): ScanToolType {
+    return this.activeScanTool;
+  }
+
   public selectTool(tool: ToolType): void {
     if (this.activeTool === tool && tool === 'drill') {
       // Clicking Slot 2 while drill is already active cycles drill heads
       this.cycleDrillHead();
+      return;
+    }
+    if (this.activeTool === tool && tool === 'scan') {
+      // Clicking Slot 1 while scan is already active cycles scan tools
+      this.cycleScanTool();
       return;
     }
 
@@ -144,6 +202,22 @@ export class ToolBar {
     this.selectDrillHead(sequence[nextIdx]);
   }
 
+  public selectScanTool(tool: ScanToolType): void {
+    if (this.activeScanTool === tool && this.activeTool === 'scan') return;
+    this.activeScanTool = tool;
+    this.activeTool = 'scan';
+    AudioManager.getInstance().playUiClick();
+    this.render();
+    this.scanToolListeners.forEach((fn) => fn(this.activeScanTool));
+    this.toolListeners.forEach((fn) => fn(this.activeTool));
+  }
+
+  public cycleScanTool(): void {
+    const sequence: ScanToolType[] = ['wind_sensor', 'echo_drone', 'spectral_scan'];
+    const nextIdx = (sequence.indexOf(this.activeScanTool) + 1) % sequence.length;
+    this.selectScanTool(sequence[nextIdx]);
+  }
+
   public onToolChange(callback: (tool: ToolType) => void): () => void {
     this.toolListeners.add(callback);
     return () => {
@@ -158,8 +232,45 @@ export class ToolBar {
     };
   }
 
+  public onScanToolChange(callback: (tool: ScanToolType) => void): () => void {
+    this.scanToolListeners.add(callback);
+    return () => {
+      this.scanToolListeners.delete(callback);
+    };
+  }
+
   private handleKeyDown(e: KeyboardEvent): void {
     const key = e.key;
+
+    // Keys 1, 2, 3 switch scan tools when scan tool is selected
+    if (this.activeTool === 'scan') {
+      if (key === '1') {
+        this.selectScanTool('wind_sensor');
+        return;
+      }
+      if (key === '2') {
+        this.selectScanTool('echo_drone');
+        return;
+      }
+      if (key === '3') {
+        this.selectScanTool('spectral_scan');
+        return;
+      }
+    }
+
+    // Direct shortcuts A, S, D for scan tools at any time
+    if (key.toLowerCase() === 'a') {
+      this.selectScanTool('wind_sensor');
+      return;
+    }
+    if (key.toLowerCase() === 's') {
+      this.selectScanTool('echo_drone');
+      return;
+    }
+    if (key.toLowerCase() === 'd') {
+      this.selectScanTool('spectral_scan');
+      return;
+    }
 
     // Keys 1, 2, 3 switch drill heads when drill tool is selected
     if (this.activeTool === 'drill') {
@@ -201,50 +312,100 @@ export class ToolBar {
   public render(): void {
     if (!this.containerElement) return;
 
+    const currentScan = SCAN_TOOLS.find((s) => s.id === this.activeScanTool) ?? SCAN_TOOLS[0];
     const currentHead = DRILL_HEADS.find((h) => h.id === this.activeDrillHead) ?? DRILL_HEADS[1];
+
+    const isScanActive = this.activeTool === 'scan';
 
     this.containerElement.innerHTML = `
       <div class="flex flex-col space-y-2 w-full max-w-lg mx-auto select-none">
-        <!-- Sub-Selector Bar for Drill Heads (Slot 2 options: Eisbohrer, Nebelfänger, Ladungsspitze) -->
-        <div class="flex items-center justify-between gap-1.5 px-2 py-1 bg-slate-900/95 backdrop-blur-md rounded-xl border border-slate-800 text-xs ${this.activeTool === 'drill' ? 'opacity-100' : 'opacity-70'}">
-          <span class="text-[10px] uppercase font-mono tracking-wider text-slate-400 pl-1">
-            ${t('tools.head')}
-          </span>
-          <div class="flex items-center gap-1 flex-1 justify-end">
-            ${DRILL_HEADS.map((head) => {
-              const isSelected = this.activeDrillHead === head.id;
-              const pillClasses = isSelected
-                ? `${head.borderClass} ${head.colorClass} shadow-[0_0_8px_rgba(56,178,172,0.3)] font-semibold`
-                : 'border-slate-800 bg-slate-800/40 text-slate-400 hover:text-slate-200 hover:bg-slate-800/70';
+        ${isScanActive ? `
+          <!-- Sub-Selector Bar for Scan Tools (Slot 1 options: Windfühler, Echo-Drohne, Spektralscan) -->
+          <div class="flex items-center justify-between gap-1.5 px-2 py-1 bg-slate-900/95 backdrop-blur-md rounded-xl border border-slate-800 text-xs opacity-100">
+            <span class="text-[10px] uppercase font-mono tracking-wider text-slate-400 pl-1">
+              ${t('tools.scanSubTitle')}
+            </span>
+            <div class="flex items-center gap-1 flex-1 justify-end">
+              ${SCAN_TOOLS.map((tool) => {
+                const isSelected = this.activeScanTool === tool.id;
+                const pillClasses = isSelected
+                  ? `${tool.borderClass} ${tool.colorClass} shadow-[0_0_8px_rgba(56,189,248,0.3)] font-semibold`
+                  : 'border-slate-800 bg-slate-800/40 text-slate-400 hover:text-slate-200 hover:bg-slate-800/70';
 
-              return `
-                <button
-                  type="button"
-                  data-head="${head.id}"
-                  class="flex items-center space-x-1 px-2 py-1 rounded-lg border text-[11px] transition-all cursor-pointer focus:outline-none ${pillClasses}"
-                  title="${t(head.nameKey)} (${t(head.zoneKey)}) [${t('tools.key')} ${head.keyNum}]"
-                >
-                  <span>${head.symbol}</span>
-                  <span class="truncate">${t(head.nameKey)}</span>
-                  <span class="text-[9px] font-mono opacity-60 ml-0.5">${head.keyNum}</span>
-                </button>
-              `;
-            }).join('')}
+                return `
+                  <button
+                    type="button"
+                    data-scan-tool="${tool.id}"
+                    class="flex items-center space-x-1 px-2 py-1 rounded-lg border text-[11px] transition-all cursor-pointer focus:outline-none ${pillClasses}"
+                    title="${tool.symbol} ${t(tool.nameKey)} (${tool.cost} CR) [${t('tools.key')} ${tool.keyNum} / ${tool.hotkey}]"
+                  >
+                    <span>${tool.symbol}</span>
+                    <span class="truncate">${t(tool.nameKey)}</span>
+                    <span class="text-[9px] font-mono text-amber-300 ml-0.5">(${tool.cost} CR)</span>
+                    <span class="text-[9px] font-mono opacity-60 ml-0.5">${tool.keyNum}/${tool.hotkey}</span>
+                  </button>
+                `;
+              }).join('')}
+            </div>
           </div>
-        </div>
+        ` : `
+          <!-- Sub-Selector Bar for Drill Heads (Slot 2 options: Eisbohrer, Nebelfänger, Ladungsspitze) -->
+          <div class="flex items-center justify-between gap-1.5 px-2 py-1 bg-slate-900/95 backdrop-blur-md rounded-xl border border-slate-800 text-xs ${this.activeTool === 'drill' ? 'opacity-100' : 'opacity-70'}">
+            <span class="text-[10px] uppercase font-mono tracking-wider text-slate-400 pl-1">
+              ${t('tools.head')}
+            </span>
+            <div class="flex items-center gap-1 flex-1 justify-end">
+              ${DRILL_HEADS.map((head) => {
+                const isSelected = this.activeDrillHead === head.id;
+                const pillClasses = isSelected
+                  ? `${head.borderClass} ${head.colorClass} shadow-[0_0_8px_rgba(56,178,172,0.3)] font-semibold`
+                  : 'border-slate-800 bg-slate-800/40 text-slate-400 hover:text-slate-200 hover:bg-slate-800/70';
+
+                return `
+                  <button
+                    type="button"
+                    data-head="${head.id}"
+                    class="flex items-center space-x-1 px-2 py-1 rounded-lg border text-[11px] transition-all cursor-pointer focus:outline-none ${pillClasses}"
+                    title="${t(head.nameKey)} (${t(head.zoneKey)}) [${t('tools.key')} ${head.keyNum}]"
+                  >
+                    <span>${head.symbol}</span>
+                    <span class="truncate">${t(head.nameKey)}</span>
+                    <span class="text-[9px] font-mono opacity-60 ml-0.5">${head.keyNum}</span>
+                  </button>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `}
 
         <!-- Main 5-Slot Toolbar -->
         <div class="grid grid-cols-5 gap-2 w-full p-1.5 bg-slate-900/90 backdrop-blur-md rounded-2xl border border-slate-800 shadow-xl">
           ${TOOLS.map((tool) => {
             const isActive = this.activeTool === tool.id;
-            let activeClasses = isActive
-              ? 'bg-amber-500/20 text-amber-300 border-amber-500/60 shadow-[0_0_12px_rgba(245,158,11,0.25)] scale-[1.02]'
-              : 'bg-slate-800/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border-transparent';
+            let activeClasses = 'bg-slate-800/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border-transparent';
+            if (isActive) {
+              if (tool.id === 'pipe') {
+                activeClasses = 'bg-cyan-500/20 text-cyan-300 border-cyan-500/60 shadow-[0_0_12px_rgba(6,182,212,0.35)] scale-[1.02]';
+              } else if (tool.id === 'tank') {
+                activeClasses = 'bg-amber-500/20 text-amber-300 border-amber-500/60 shadow-[0_0_12px_rgba(245,158,11,0.35)] scale-[1.02]';
+              } else if (tool.id === 'scan') {
+                activeClasses = 'bg-sky-500/20 text-sky-300 border-sky-500/60 shadow-[0_0_12px_rgba(56,189,248,0.35)] scale-[1.02]';
+              } else if (tool.id === 'drill') {
+                activeClasses = 'bg-teal-500/20 text-teal-300 border-teal-500/60 shadow-[0_0_12px_rgba(20,184,166,0.35)] scale-[1.02]';
+              } else if (tool.id === 'sell') {
+                activeClasses = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/60 shadow-[0_0_12px_rgba(16,185,129,0.35)] scale-[1.02]';
+              } else {
+                activeClasses = 'bg-amber-500/20 text-amber-300 border-amber-500/60 shadow-[0_0_12px_rgba(245,158,11,0.25)] scale-[1.02]';
+              }
+            }
 
-            // Show current drill head symbol on slot 2
-            const label = tool.id === 'drill' 
-              ? `${currentHead.symbol} ${t(tool.nameKey)}`
-              : t(tool.nameKey);
+            // Show current subtool symbol on slot 1 and slot 2
+            let label = t(tool.nameKey);
+            if (tool.id === 'scan') {
+              label = `${currentScan.symbol} ${t(tool.nameKey)}`;
+            } else if (tool.id === 'drill') {
+              label = `${currentHead.symbol} ${t(tool.nameKey)}`;
+            }
 
             return `
               <button
@@ -286,6 +447,16 @@ export class ToolBar {
         e.stopPropagation();
         const headId = btn.getAttribute('data-head') as DrillHeadType;
         if (headId) this.selectDrillHead(headId);
+      });
+    });
+
+    // Attach click listeners to scan tool sub-selector buttons
+    const scanButtons = this.containerElement.querySelectorAll<HTMLButtonElement>('button[data-scan-tool]');
+    scanButtons.forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const scanId = btn.getAttribute('data-scan-tool') as ScanToolType;
+        if (scanId) this.selectScanTool(scanId);
       });
     });
   }

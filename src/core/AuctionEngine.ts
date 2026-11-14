@@ -710,6 +710,8 @@ export class AuctionEngine {
       const pocketsCount = cfg.size === 'S' ? 1 : cfg.size === 'M' ? 2 : 3;
       const pockets: CondensatePocket[] = [];
 
+      const quality: 1 | 2 | 3 = idx === 0 || idx === 3 ? 3 : idx === 2 ? 2 : 1;
+
       for (let p = 0; p < pocketsCount; p++) {
         const pocketX = 140 + p * 120 + ((idx * 37) % 60);
         const pocketY = GRID_TOP_Y + (cfg.depthLayer + 0.5) * layerHeight;
@@ -729,10 +731,13 @@ export class AuctionEngine {
           currentVolume: capacity,
           isDepleted: false,
           valuePerUnit: cfg.zone === 'high' ? 25 : cfg.zone === 'low' ? 18 : 10,
+          isAurora: cfg.hasAurora && p === 0,
+          hasAwardedAurora: false,
+          discoveryState: 'concealed',
+          quality,
+          sizeCategory: cfg.size,
         });
       }
-
-      const quality: 1 | 2 | 3 = idx === 0 || idx === 3 ? 3 : idx === 2 ? 2 : 1;
 
       return {
         id: cfg.id,
@@ -757,5 +762,105 @@ export class AuctionEngine {
         winningBid: null,
       };
     });
+  }
+
+  /**
+   * Generates a freshly replenished procedural cloud band for week advance / replenishment.
+   */
+  public static createReplenishedBand(week: number, _season: number = 1): CloudBand {
+    const layerHeight = (GRID_BOTTOM_Y - GRID_TOP_Y) / GRID_LAYERS;
+    const bandId = `band-week-${week}-${Date.now()}`;
+    const nameIndex = (week - 1) % 4;
+    const bandNames = [
+      'Aether-Nimbus Stratum',
+      'Kristall-Zirrus Wanderer',
+      'Cumulus Vitalis',
+      'Aurora-Boreal Drifter',
+    ];
+    const name = `${bandNames[nameIndex]} (Woche ${week})`;
+
+    const pockets: CondensatePocket[] = [
+      {
+        id: `pocket-replenish-${week}-1`,
+        name: `${name} - Frostader`,
+        zone: 'high',
+        resourceType: 'frost',
+        baseX: 160 + ((week * 43) % 90),
+        baseY: GRID_TOP_Y + 1.5 * layerHeight,
+        x: 160 + ((week * 43) % 90),
+        y: GRID_TOP_Y + 1.5 * layerHeight,
+        radius: 28,
+        maxCapacity: 120 + week * 5,
+        currentVolume: 120 + week * 5,
+        isDepleted: false,
+        valuePerUnit: 25,
+        discoveryState: 'concealed',
+        quality: (((week % 3) + 1) as 1 | 2 | 3),
+        sizeCategory: 'M',
+      },
+      {
+        id: `pocket-replenish-${week}-2`,
+        name: `${name} - Himmelssee`,
+        zone: 'mid',
+        resourceType: 'skywater',
+        baseX: 320 + ((week * 29) % 80),
+        baseY: GRID_TOP_Y + 5.5 * layerHeight,
+        x: 320 + ((week * 29) % 80),
+        y: GRID_TOP_Y + 5.5 * layerHeight,
+        radius: 32,
+        maxCapacity: 150 + week * 5,
+        currentVolume: 150 + week * 5,
+        isDepleted: false,
+        valuePerUnit: 10,
+        discoveryState: 'concealed',
+        quality: 2,
+        sizeCategory: 'L',
+      },
+      {
+        id: `pocket-replenish-${week}-3`,
+        name: `${name} - Sturmkristall`,
+        zone: 'low',
+        resourceType: 'storm',
+        baseX: 240 + ((week * 67) % 110),
+        baseY: GRID_TOP_Y + 9.5 * layerHeight,
+        x: 240 + ((week * 67) % 110),
+        y: GRID_TOP_Y + 9.5 * layerHeight,
+        radius: 34,
+        maxCapacity: 170 + week * 5,
+        currentVolume: 170 + week * 5,
+        isDepleted: false,
+        valuePerUnit: 18,
+        discoveryState: 'concealed',
+        quality: 3,
+        sizeCategory: 'M',
+      },
+    ];
+
+    const forecast: WindForecast[] = [
+      { week, direction: week % 2 === 0 ? 'east' : 'west', speed: 28, turbulence: 'calm' },
+    ];
+
+    return {
+      id: bandId,
+      name,
+      zone: week % 2 === 0 ? 'high' : 'mid',
+      primaryResource: week % 2 === 0 ? 'frost' : 'skywater',
+      estimatedSize: 'L',
+      baseValue: 200 + week * 10,
+      weatherForecast: forecast,
+      initialHint: 'auction.hints.midCalmFlow',
+      actualData: {
+        density: 0.5,
+        pocketsCount: 3,
+        depthLayer: 5,
+        approximateX: 270,
+        quality: 2,
+        hasAurora: week % 4 === 0,
+        pockets,
+      },
+      round: 1,
+      winner: 'player',
+      winningBid: 0,
+    };
   }
 }

@@ -3,9 +3,9 @@ import { ColorPalette } from '../gfx/ColorPalette';
 import { AudioManager } from '../audio/AudioManager';
 import { CloudGrid, CondensatePocket } from '../core/CloudGrid';
 import { ProbePhysics, DrillHeadType } from '../core/ProbePhysics';
-import { ToolType } from '../ui/ToolBar';
+import { ToolType, ScanToolType } from '../ui/ToolBar';
 import { GameState } from '../core/GameState';
-import { CloudBand } from '../core/AuctionEngine';
+import { CloudBand, AuctionEngine } from '../core/AuctionEngine';
 import { LogisticsNet, PipeStatus } from '../core/LogisticsNet';
 import { ResourceType } from '../core/MarketEconomy';
 import { t, onLanguageChange } from '../i18n/i18n';
@@ -45,12 +45,101 @@ interface SonarPulse {
   color: number;
 }
 
+interface DroneScan {
+  x: number;
+  y: number;
+  targetX: number;
+  layer: number;
+  speed: number;
+  pulseTimer: number;
+}
+
+interface SpectralScan {
+  x: number;
+  y: number;
+  currentRadius: number;
+  maxRadius: number;
+  alpha: number;
+}
+
+interface PocketLabelGroup {
+  hintText: Phaser.GameObjects.Text;
+  symbolText: Phaser.GameObjects.Text;
+  qualityText: Phaser.GameObjects.Text;
+}
+
+export interface CustomPipe {
+  id: string;
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+  sourceType: 'platform' | 'tank' | 'pocket' | 'balloon';
+  targetType: 'platform' | 'tank' | 'pocket' | 'balloon';
+  sourcePocketId?: string;
+  targetPocketId?: string;
+  flowTimer: number;
+}
+
+export interface CustomBalloon {
+  id: string;
+  x: number;
+  y: number;
+  capacity: number;
+  bobPhase: number;
+}
+
+export interface SkyRival {
+  id: 'daredevil' | 'calculator' | 'tracker';
+  nameKey: string;
+  symbol: string;
+  x: number;
+  y: number;
+  baseXRatio: number;
+  baseY: number;
+  color: number;
+  accentColor: number;
+  flagColor: number;
+  totalHarvested: number;
+  targetPocketId: string | null;
+  drillX: number;
+  drillY: number;
+  cableT: number;
+  isDrilling: boolean;
+  drillTimer: number;
+  decisionCooldown: number;
+  nameText?: Phaser.GameObjects.Text;
+  counterText?: Phaser.GameObjects.Text;
+}
+
 export class SkyHarvestScene extends Phaser.Scene {
   // Core Simulation
   private cloudGrid!: CloudGrid;
   private logisticsNet: LogisticsNet = new LogisticsNet();
   private activeTool: ToolType = 'drill';
   private activeDrillHead: DrillHeadType = 'fog';
+  private activeScanTool: ScanToolType = 'wind_sensor';
+
+  // Interactive Logistics (Slot 3: Rohr & Slot 4: Speicher)
+  private customPipes: CustomPipe[] = [];
+  private customBalloons: CustomBalloon[] = [];
+  private pipeDragStart: { x: number; y: number; type: 'platform' | 'tank' | 'pocket' | 'balloon'; pocketId?: string } | null = null;
+  private isBuildingPipe = false;
+  private pointerCurrentX = 0;
+  private pointerCurrentY = 0;
+  private logisticsInteractiveGraphics!: Phaser.GameObjects.Graphics;
+
+  // Sky Arena - KI-Rivalen
+  private skyRivals: SkyRival[] = [];
+  private rivalsGraphics!: Phaser.GameObjects.Graphics;
+  private rivalCablesGraphics!: Phaser.GameObjects.Graphics;
+  private rivalParticles: Array<{ x: number; y: number; targetX: number; targetY: number; t: number; color: number }> = [];
+  private lastContestedAlertTimer = 0;
+
+  // Cloud Replenishment & Platform Relocation
+  private replenishBannerContainer: Phaser.GameObjects.Container | null = null;
+  private isReplenishingDrift = false;
+  private platformOffsetX = 0;
 
   // Game Objects & Layers
   private clouds: CloudInstance[] = [];
@@ -81,10 +170,13 @@ export class SkyHarvestScene extends Phaser.Scene {
   private dockedPocket: CondensatePocket | null = null;
   private timeElapsed = 0;
 
-  // Extraction Droplets, Pipe Droplets & Sonar
+  // Extraction Droplets, Pipe Droplets & Sonar/Scans
   private extractionDroplets: ExtractionDrop[] = [];
   private pipeDroplets: PipeDrop[] = [];
   private activeSonarPulses: SonarPulse[] = [];
+  private activeDroneScans: DroneScan[] = [];
+  private activeSpectralScans: SpectralScan[] = [];
+  private pocketLabels: Map<string, PocketLabelGroup> = new Map();
   private sonarHintText!: Phaser.GameObjects.Text;
   private sonarHintTimer = 0;
 
@@ -136,6 +228,7 @@ export class SkyHarvestScene extends Phaser.Scene {
     // 1. Initialize Simulation Model with custom pockets from active cloud band if present
     const customPockets = this.activeBand?.actualData.pockets;
     this.cloudGrid = new CloudGrid(customPockets, width, height);
+    this.initPocketLabels();
     this.probeCurrentX = width / 2;
     this.probeTargetX = width / 2;
 
@@ -188,6 +281,20 @@ export class SkyHarvestScene extends Phaser.Scene {
     this.logisticsStatusGraphics = this.add.graphics();
     this.logisticsStatusGraphics.setDepth(12);
 
+    // 10d. Interactive Logistics Graphics (Pipe building, custom pipes & balloons)
+    this.logisticsInteractiveGraphics = this.add.graphics();
+    this.logisticsInteractiveGraphics.setDepth(13);
+
+    // 10e. Sky Arena - AI Rivals Graphics & Cables
+    this.rivalCablesGraphics = this.add.graphics();
+    this.rivalCablesGraphics.setDepth(7);
+    this.rivalsGraphics = this.add.graphics();
+    this.rivalsGraphics.setDepth(10);
+    this.initSkyRivals(width);
+
+    // 10f. Cloud Replenishment & Platform Relocation Action Banner
+    this.createReplenishBanner(width);
+
     // 11. Interactive Drill Probe Head
     this.createProbeHead();
 
@@ -221,6 +328,21 @@ export class SkyHarvestScene extends Phaser.Scene {
         this.langListener();
         this.langListener = null;
       }
+      this.pocketLabels.forEach((grp) => {
+        grp.hintText.destroy();
+        grp.symbolText.destroy();
+        grp.qualityText.destroy();
+      });
+      this.pocketLabels.clear();
+      this.skyRivals.forEach((r) => {
+        r.nameText?.destroy();
+        r.counterText?.destroy();
+      });
+      this.skyRivals = [];
+      if (this.replenishBannerContainer) {
+        this.replenishBannerContainer.destroy();
+        this.replenishBannerContainer = null;
+      }
     });
 
     // Initial display updates
@@ -240,6 +362,12 @@ export class SkyHarvestScene extends Phaser.Scene {
     }
     if (this.startHintText) {
       this.startHintText.setText(t('harvest.startHint'));
+    }
+    this.createReplenishBanner(width);
+    for (const rival of this.skyRivals) {
+      if (rival.nameText) {
+        rival.nameText.setText(`${rival.symbol} ${t(rival.nameKey)}`);
+      }
     }
   }
 
@@ -304,16 +432,20 @@ export class SkyHarvestScene extends Phaser.Scene {
     this.buildHarborSkyline(width, height);
 
     if (this.platform) {
-      this.platform.setPosition(width / 2, 50);
+      this.platform.setPosition(width / 2, 80);
     }
 
     if (this.sonarHintText) {
       this.sonarHintText.setPosition(width / 2, 120);
     }
 
+    if (this.replenishBannerContainer) {
+      this.replenishBannerContainer.setPosition(width / 2, 140);
+    }
+
     // Keep probe inside screen bounds
     this.probeCurrentX = Phaser.Math.Clamp(this.probeCurrentX, 30, width - 30);
-    this.probeCurrentY = Phaser.Math.Clamp(this.probeCurrentY, 80, height - 90);
+    this.probeCurrentY = Phaser.Math.Clamp(this.probeCurrentY, 105, height - 90);
     this.probeTargetX = this.probeCurrentX;
     this.probeTargetY = this.probeCurrentY;
     if (this.probeHead) {
@@ -579,7 +711,7 @@ export class SkyHarvestScene extends Phaser.Scene {
   }
 
   private createSuspendedPlatform(width: number): void {
-    this.platform = this.add.container(width / 2, 50);
+    this.platform = this.add.container(width / 2, 80);
     const platformSprite = this.add.sprite(0, 0, 'platform');
     this.platform.add(platformSprite);
     this.platform.setDepth(10);
@@ -622,6 +754,10 @@ export class SkyHarvestScene extends Phaser.Scene {
       this.activeDrillHead = head;
       this.updateProbeTexture();
     });
+
+    this.game.events.on('scantool:change', (scanTool: ScanToolType) => {
+      this.activeScanTool = scanTool;
+    });
   }
 
   public setTool(tool: ToolType): void {
@@ -629,18 +765,67 @@ export class SkyHarvestScene extends Phaser.Scene {
     if (tool !== 'drill') {
       AudioManager.getInstance().stopDrill();
     }
-    if (tool === 'pipe') {
-      this.game.events.emit('harbor:open', 'upgrades');
-    } else if (tool === 'tank') {
-      this.game.events.emit('harbor:open', 'upgrades');
-    } else if (tool === 'sell') {
+    if (tool !== 'pipe') {
+      this.pipeDragStart = null;
+      this.isBuildingPipe = false;
+    }
+    if (tool === 'sell') {
       this.game.events.emit('harbor:open', 'market');
     }
+  }
+
+  public getActiveTool(): ToolType {
+    return this.activeTool;
   }
 
   public setDrillHead(head: DrillHeadType): void {
     this.activeDrillHead = head;
     this.updateProbeTexture();
+  }
+
+  public setScanTool(scanTool: ScanToolType): void {
+    this.activeScanTool = scanTool;
+  }
+
+  private initPocketLabels(): void {
+    this.pocketLabels.forEach((grp) => {
+      grp.hintText.destroy();
+      grp.symbolText.destroy();
+      grp.qualityText.destroy();
+    });
+    this.pocketLabels.clear();
+
+    const pockets = this.cloudGrid?.getPockets() ?? [];
+    for (const p of pockets) {
+      const hintText = this.add.text(p.x, p.y, '(?)', {
+        fontFamily: 'monospace',
+        fontSize: '13px',
+        fontStyle: 'bold',
+        color: '#7DD3FC',
+        stroke: '#0F172A',
+        strokeThickness: 3,
+      }).setOrigin(0.5).setDepth(8).setVisible(false);
+
+      const symbol = p.resourceType === 'frost' ? '❄' : p.resourceType === 'skywater' ? '💧' : '⚡';
+      const symbolText = this.add.text(p.x, p.y - 4, symbol, {
+        fontFamily: 'sans-serif',
+        fontSize: '14px',
+        color: '#FFFFFF',
+        stroke: '#0F172A',
+        strokeThickness: 3,
+      }).setOrigin(0.5).setDepth(8).setVisible(false);
+
+      const stars = p.quality === 3 ? '⭐⭐⭐' : p.quality === 2 ? '⭐⭐' : '⭐';
+      const qualityText = this.add.text(p.x, p.y + 11, stars, {
+        fontFamily: 'sans-serif',
+        fontSize: '9px',
+        color: '#FDE047',
+        stroke: '#0F172A',
+        strokeThickness: 2,
+      }).setOrigin(0.5).setDepth(8).setVisible(false);
+
+      this.pocketLabels.set(p.id, { hintText, symbolText, qualityText });
+    }
   }
 
   private updateProbeTexture(): void {
@@ -662,16 +847,28 @@ export class SkyHarvestScene extends Phaser.Scene {
       const width = this.cameras.main.width;
       const height = this.cameras.main.height;
 
-      // Scan Tool (Windfühler) Trigger
+      // Scan Tool Trigger
       if (this.activeTool === 'scan') {
-        this.triggerWindSensor(pointer.x, pointer.y);
+        this.handleScanAction(pointer.x, pointer.y);
+        return;
+      }
+
+      // Interactive Pipe Tool (Slot 3)
+      if (this.activeTool === 'pipe') {
+        this.handlePipePointerDown(pointer.x, pointer.y);
+        return;
+      }
+
+      // Interactive Tank Tool (Slot 4)
+      if (this.activeTool === 'tank') {
+        this.handleTankPointerDown(pointer.x, pointer.y);
         return;
       }
 
       // Drill Tool (Full Available Screen Steer)
       if (this.activeTool === 'drill') {
         this.probeTargetX = Phaser.Math.Clamp(pointer.x, 30, width - 30);
-        this.probeTargetY = Phaser.Math.Clamp(pointer.y, 80, height - 90);
+        this.probeTargetY = Phaser.Math.Clamp(pointer.y, 105, height - 90);
 
         // If clicked far from docked pocket, unlatch
         if (this.isDocked && this.dockedPocket) {
@@ -686,62 +883,341 @@ export class SkyHarvestScene extends Phaser.Scene {
     });
 
     this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      this.pointerCurrentX = pointer.x;
+      this.pointerCurrentY = pointer.y;
+
       if (pointer.isDown && this.isPointerActive && this.activeTool === 'drill') {
         this.dismissStartHint();
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
         this.probeTargetX = Phaser.Math.Clamp(pointer.x, 30, width - 30);
-        this.probeTargetY = Phaser.Math.Clamp(pointer.y, 80, height - 90);
+        this.probeTargetY = Phaser.Math.Clamp(pointer.y, 105, height - 90);
       }
     });
 
-    this.input.on('pointerup', () => {
+    this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
       this.isPointerActive = false;
       AudioManager.getInstance().stopDrill();
+
+      if (this.activeTool === 'pipe' && this.isBuildingPipe && this.pipeDragStart) {
+        this.handlePipePointerUp(pointer.x, pointer.y);
+      }
     });
   }
 
+  public showScanBanner(msg: string, yPos: number, color = '#F8FAFC', bgColor = '#0F172ACC'): void {
+    const height = this.cameras.main.height;
+    this.sonarHintText.setText(msg);
+    this.sonarHintText.setColor(color);
+    this.sonarHintText.setBackgroundColor(bgColor);
+    this.sonarHintText.setPosition(this.cameras.main.width / 2, Phaser.Math.Clamp(yPos - 45, 110, height - 120));
+    this.sonarHintText.setAlpha(1.0);
+    this.sonarHintTimer = 2.8;
+  }
+
+  private showInsufficientFundsToast(required: number): void {
+    AudioManager.getInstance().playUiClick();
+    this.showScanBanner(`⚠️ ${t('scan.notEnoughCredits')} (${required} CR)`, 200, '#FCA5A5', '#450A0ACC');
+  }
+
   /**
-   * Activates Windfühler Sonar Ping and displays warmer/colder indicator
+   * Interactive Pipeline Builder (Slot 3: Rohr)
    */
-  private triggerWindSensor(x: number, y: number): void {
-    const nearest = this.cloudGrid.findNearestPocket(x, y);
-    const maxPingRadius = 160;
+  public handlePipePointerDown(x: number, y: number): void {
+    const height = this.cameras.main.height;
 
-    let distanceRatio = 1.0;
-    let hintMsg = t('sonar.colder');
-    let pingColor: number = ColorPalette.highZone.turquoiseCrystalNum;
+    // Check if clicked on/near a pocket
+    const nearestPocket = this.cloudGrid?.getPockets().find((p) => Math.hypot(p.x - x, p.y - y) < Math.max(35, p.radius + 12));
+    if (nearestPocket) {
+      this.pipeDragStart = { x: nearestPocket.x, y: nearestPocket.y, type: 'pocket', pocketId: nearestPocket.id };
+      this.isBuildingPipe = true;
+      return;
+    }
 
-    if (nearest) {
-      distanceRatio = nearest.distance / maxPingRadius;
+    // Check if clicked near custom balloon
+    const nearestBalloon = this.customBalloons.find((b) => Math.hypot(b.x - x, b.y - y) < 30);
+    if (nearestBalloon) {
+      this.pipeDragStart = { x: nearestBalloon.x, y: nearestBalloon.y, type: 'balloon' };
+      this.isBuildingPipe = true;
+      return;
+    }
 
-      if (nearest.distance < 70) {
-        hintMsg = `${t('sonar.veryHot')} (${nearest.pocket.name})`;
-        pingColor = ColorPalette.lowZone.glowGoldNum;
-      } else if (nearest.distance < maxPingRadius) {
-        hintMsg = `${t('sonar.warmer')} (${nearest.pocket.name})`;
-        pingColor = ColorPalette.midZone.condensateDropNum;
-      } else {
-        hintMsg = `${t('sonar.colder')} • ${t('sonar.signalWeak')}`;
+    // Check if clicked near platform
+    const platformX = this.platform?.x ?? 270;
+    const platformY = this.platform?.y ?? 80;
+    if (Math.hypot(platformX - x, platformY - y) < 75) {
+      this.pipeDragStart = { x: platformX, y: platformY + 10, type: 'platform' };
+      this.isBuildingPipe = true;
+      return;
+    }
+
+    // Default sky start point
+    this.pipeDragStart = { x, y: Phaser.Math.Clamp(y, 75, height - 80), type: 'platform' };
+    this.isBuildingPipe = true;
+  }
+
+  public handlePipePointerUp(x: number, y: number): void {
+    if (!this.pipeDragStart) return;
+
+    const dist = Math.hypot(x - this.pipeDragStart.x, y - this.pipeDragStart.y);
+    if (dist < 20) {
+      this.pipeDragStart = null;
+      this.isBuildingPipe = false;
+      return;
+    }
+
+    let targetX = x;
+    let targetY = y;
+    let targetType: 'platform' | 'tank' | 'pocket' | 'balloon' = 'pocket';
+    let targetPocketId: string | undefined = undefined;
+
+    const nearestPocket = this.cloudGrid?.getPockets().find((p) => Math.hypot(p.x - x, p.y - y) < Math.max(35, p.radius + 12));
+    if (nearestPocket) {
+      targetX = nearestPocket.x;
+      targetY = nearestPocket.y;
+      targetType = 'pocket';
+      targetPocketId = nearestPocket.id;
+    } else {
+      const nearestBalloon = this.customBalloons.find((b) => Math.hypot(b.x - x, b.y - y) < 30);
+      if (nearestBalloon) {
+        targetX = nearestBalloon.x;
+        targetY = nearestBalloon.y;
+        targetType = 'balloon';
       }
     }
 
-    AudioManager.getInstance().playSonarPing(distanceRatio);
+    this.buildPipe(
+      this.pipeDragStart.x,
+      this.pipeDragStart.y,
+      targetX,
+      targetY,
+      this.pipeDragStart.type,
+      targetType,
+      this.pipeDragStart.pocketId,
+      targetPocketId
+    );
 
-    this.activeSonarPulses.push({
-      x,
-      y,
-      radius: 10,
-      maxRadius: maxPingRadius,
-      alpha: 0.9,
-      color: pingColor,
+    this.pipeDragStart = null;
+    this.isBuildingPipe = false;
+  }
+
+  public buildPipe(
+    startX: number,
+    startY: number,
+    endX: number,
+    endY: number,
+    sourceType: 'platform' | 'tank' | 'pocket' | 'balloon' = 'platform',
+    targetType: 'platform' | 'tank' | 'pocket' | 'balloon' = 'pocket',
+    sourcePocketId?: string,
+    targetPocketId?: string
+  ): boolean {
+    const gs = GameState.getInstance();
+    const pipeCost = 30;
+    if (gs.getCredits() < pipeCost) {
+      this.showScanBanner(t('logisticsTool.notEnoughCreditsPipe'), (startY + endY) / 2, '#FCA5A5', '#450A0ACC');
+      AudioManager.getInstance().playUiClick();
+      return false;
+    }
+
+    gs.deductCredits(pipeCost);
+    this.updateCreditsDisplay();
+    AudioManager.getInstance().playValveOpen();
+
+    this.customPipes.push({
+      id: `pipe-${Date.now()}-${this.customPipes.length + 1}`,
+      startX,
+      startY,
+      endX,
+      endY,
+      sourceType,
+      targetType,
+      sourcePocketId,
+      targetPocketId,
+      flowTimer: 0,
     });
 
-    const height = this.cameras.main.height;
-    this.sonarHintText.setText(hintMsg);
-    this.sonarHintText.setPosition(this.cameras.main.width / 2, Phaser.Math.Clamp(y - 45, 110, height - 120));
-    this.sonarHintText.setAlpha(1.0);
-    this.sonarHintTimer = 2.4;
+    this.showScanBanner(t('logisticsTool.pipeConnected'), (startY + endY) / 2, '#67E8F9', '#083344EE');
+    return true;
+  }
+
+  /**
+   * Interactive Storage Balloon Placement (Slot 4: Speicher)
+   */
+  public handleTankPointerDown(x: number, y: number): void {
+    const width = this.cameras.main.width;
+    const ghostX = Phaser.Math.Clamp(x, 40, width - 40);
+    const ghostY = Phaser.Math.Clamp(y, 70, 120);
+    this.placeStorageBalloon(ghostX, ghostY);
+  }
+
+  public placeStorageBalloon(x: number, y: number): boolean {
+    const gs = GameState.getInstance();
+    const tankCost = 100;
+    if (gs.getCredits() < tankCost) {
+      this.showScanBanner(t('logisticsTool.notEnoughCreditsTank'), y, '#FCA5A5', '#450A0ACC');
+      AudioManager.getInstance().playUiClick();
+      return false;
+    }
+
+    gs.deductCredits(tankCost);
+    gs.expandStorage(40);
+    this.updateCreditsDisplay();
+    this.updateTankDisplay();
+    AudioManager.getInstance().playCableRelease();
+
+    this.customBalloons.push({
+      id: `balloon-${Date.now()}-${this.customBalloons.length + 1}`,
+      x,
+      y: Phaser.Math.Clamp(y, 70, 120),
+      capacity: 40,
+      bobPhase: Math.random() * Math.PI * 2,
+    });
+
+    this.showScanBanner(t('logisticsTool.tankAnchored'), y + 30, '#FDE047', '#451A03EE');
+    return true;
+  }
+
+  public getCustomPipes(): ReadonlyArray<CustomPipe> {
+    return this.customPipes;
+  }
+
+  public getCustomBalloons(): ReadonlyArray<CustomBalloon> {
+    return this.customBalloons;
+  }
+
+  public getSkyRivals(): ReadonlyArray<SkyRival> {
+    return this.skyRivals;
+  }
+
+  public getReplenishBannerVisible(): boolean {
+    return this.replenishBannerContainer?.visible ?? false;
+  }
+
+  /**
+   * Dispatches the 3 graduated scanning mechanics (Windfühler, Echo-Drohne, Spektralscan)
+   */
+  public handleScanAction(x: number, y: number): void {
+    const gs = GameState.getInstance();
+
+    // 1. Windfühler (50 CR)
+    if (this.activeScanTool === 'wind_sensor') {
+      const cost = 50;
+      if (!gs.deductCredits(cost)) {
+        this.showInsufficientFundsToast(cost);
+        return;
+      }
+      this.updateCreditsDisplay();
+
+      const maxPingRadius = 160;
+      const nearest = this.cloudGrid.findNearestPocket(x, y);
+      let distanceRatio = 1.0;
+      let hintMsg = t('sonar.colder');
+      let pingColor: number = ColorPalette.highZone.turquoiseCrystalNum;
+
+      if (nearest) {
+        distanceRatio = nearest.distance / maxPingRadius;
+        if (nearest.distance < 70) {
+          hintMsg = `${t('sonar.veryHot')} (${nearest.pocket.name})`;
+          pingColor = ColorPalette.lowZone.glowGoldNum;
+        } else if (nearest.distance < maxPingRadius) {
+          hintMsg = `${t('sonar.warmer')} (${nearest.pocket.name})`;
+          pingColor = ColorPalette.midZone.condensateDropNum;
+        } else {
+          hintMsg = `${t('sonar.colder')} • ${t('sonar.signalWeak')}`;
+        }
+      }
+
+      AudioManager.getInstance().playSonarPing(distanceRatio);
+
+      // Hint all concealed pockets within 160px
+      this.cloudGrid.hintPocketsInRadius(x, y, maxPingRadius);
+
+      this.activeSonarPulses.push({
+        x,
+        y,
+        radius: 10,
+        maxRadius: maxPingRadius,
+        alpha: 0.9,
+        color: pingColor,
+      });
+
+      this.showScanBanner(hintMsg, y, '#E2E8F0', '#0F172ACC');
+      return;
+    }
+
+    // 2. Echo-Drohne (150 CR)
+    if (this.activeScanTool === 'echo_drone') {
+      const cost = 150;
+      if (!gs.deductCredits(cost)) {
+        this.showInsufficientFundsToast(cost);
+        return;
+      }
+      this.updateCreditsDisplay();
+
+      AudioManager.getInstance().playScanTelemetry();
+
+      const layerHeight = (this.cloudGrid.gridBottomY - this.cloudGrid.gridTopY) / this.cloudGrid.layers;
+      const layerIdx = Phaser.Math.Clamp(Math.floor((y - this.cloudGrid.gridTopY) / layerHeight), 0, 11);
+      const layerCenterY = this.cloudGrid.gridTopY + (layerIdx + 0.5) * layerHeight;
+
+      // Hint all concealed pockets in this altitude layer
+      this.cloudGrid.hintPocketsInLayer(layerIdx);
+
+      // Spawn animated horizontal drone scan flight
+      const width = this.cameras.main.width;
+      this.activeDroneScans.push({
+        x: 0,
+        y: layerCenterY,
+        targetX: width + 40,
+        layer: layerIdx,
+        speed: (width + 80) / 1.3,
+        pulseTimer: 0,
+      });
+
+      this.showScanBanner(`🚁 ${t('scan.droneScanning')} (${t('header.layer') || 'Layer'} ${layerIdx + 1}/12)`, layerCenterY, '#5EEAD4', '#042F2ECC');
+      return;
+    }
+
+    // 3. Spektralscan (400 CR)
+    if (this.activeScanTool === 'spectral_scan') {
+      const cost = 400;
+      if (!gs.deductCredits(cost)) {
+        this.showInsufficientFundsToast(cost);
+        return;
+      }
+      this.updateCreditsDisplay();
+
+      AudioManager.getInstance().playScanTelemetry();
+
+      const scanRadius = 200;
+      const revealed = this.cloudGrid.revealPocketsInRadius(x, y, scanRadius);
+      if (revealed.length > 0) {
+        AudioManager.getInstance().playPocketHit();
+      }
+
+      this.activeSpectralScans.push({
+        x,
+        y,
+        currentRadius: 10,
+        maxRadius: scanRadius,
+        alpha: 1.0,
+      });
+
+      const bannerText = revealed.length > 0
+        ? `${t('scan.spectralFound')} (${revealed.map((p) => p.name).join(', ')})`
+        : t('scan.spectralEmpty');
+
+      this.showScanBanner(bannerText, y, '#D8B4FE', '#2E1065CC');
+      return;
+    }
+  }
+
+  /**
+   * Backward-compatible Windfühler trigger
+   */
+  public triggerWindSensor(x: number, y: number): void {
+    this.activeScanTool = 'wind_sensor';
+    this.handleScanAction(x, y);
   }
 
   public update(_time: number, delta: number): void {
@@ -759,9 +1235,9 @@ export class SkyHarvestScene extends Phaser.Scene {
     const swayAngle = Math.sin(this.timeElapsed * 1.2) * 1.5;
     const swayY = Math.sin(this.timeElapsed * 2.0) * 2;
     this.platform.setAngle(swayAngle);
-    this.platform.setY(50 + swayY);
+    this.platform.setY(80 + swayY);
     const winchX = width / 2;
-    const winchY = 50 + swayY + 12;
+    const winchY = 80 + swayY + 12;
 
     // 2. Update CloudGrid (carve channel healing and pocket drift)
     this.cloudGrid.update(dt, this.currentWeek, (this.timeElapsed % 60) / 60);
@@ -782,7 +1258,17 @@ export class SkyHarvestScene extends Phaser.Scene {
     this.renderCableAndDroplets(winchX, winchY, dt);
 
     // 7b. Render Logistics Network (Condenser, Pipes, Tanks & Status)
-    this.renderLogisticsNetwork(winchX, 50 + swayY, dt);
+    this.renderLogisticsNetwork(winchX, 80 + swayY, dt);
+
+    // 7c. Render Interactive Logistics (Custom Pipes, Custom Balloons, Reticle & Ghost Balloon)
+    this.renderInteractiveLogistics(winchX, 80 + swayY);
+
+    // 7d. Update & Render Sky Arena AI Rivals
+    this.updateSkyRivals(dt);
+    this.renderSkyRivalsGraphics();
+
+    // 7e. Cloud Replenishment Action Banner
+    this.updateReplenishBanner();
 
     // 8. Render Sonar Waves & HUD
     this.renderSonarFX(dt);
@@ -903,8 +1389,16 @@ export class SkyHarvestScene extends Phaser.Scene {
 
       const dist = Phaser.Math.Distance.Between(this.probeCurrentX, this.probeCurrentY, p.x, p.y);
 
-      // Docking trigger
-      if (!this.isDocked && dist < p.radius + 14) {
+      // Docking trigger & blind drill discovery (< 35px or dist < p.radius + 14)
+      const dockThreshold = Math.max(35, p.radius + 14);
+      if (!this.isDocked && dist < dockThreshold) {
+        // Blind Drilling Discovery: immediate reveal
+        const wasUnrevealed = p.discoveryState === 'concealed' || p.discoveryState === 'hinted';
+        if (wasUnrevealed) {
+          p.discoveryState = 'revealed';
+          this.showScanBanner(`${t('scan.blindDiscovery')} (${p.name})`, p.y, '#FDE047', '#1E1B4BCC');
+        }
+
         this.isDocked = true;
         this.dockedPocket = p;
         AudioManager.getInstance().playPocketHit();
@@ -1033,23 +1527,68 @@ export class SkyHarvestScene extends Phaser.Scene {
   }
 
   /**
-   * Renders the floating condensate pockets with volume and states
+   * Renders the floating condensate pockets across the 4 discovery states:
+   * 'concealed' (0% invisible), 'hinted' (pulsing sonar mist + ?),
+   * 'revealed' (radiant colors, symbols, stars, fill arc), 'exhausted' (hollow circle)
    */
   private renderPockets(): void {
     this.pocketsGraphics.clear();
     const pockets = this.cloudGrid.getPockets();
 
     for (const p of pockets) {
-      const volumeRatio = p.currentVolume / p.maxCapacity;
-      const isDepleted = p.isDepleted;
+      const labelGroup = this.pocketLabels.get(p.id);
+      const isDepleted = p.isDepleted || p.discoveryState === 'exhausted';
 
+      // 1. Exhausted state: hollow drained circle
       if (isDepleted) {
         this.pocketsGraphics.lineStyle(1.5, 0x64748B, 0.4);
         this.pocketsGraphics.strokeCircle(p.x, p.y, p.radius * 0.7);
+        if (labelGroup) {
+          labelGroup.hintText.setVisible(false);
+          labelGroup.symbolText.setVisible(false);
+          labelGroup.qualityText.setVisible(false);
+        }
         continue;
       }
 
-      // Outer aura glow
+      // 2. Concealed state: completely invisible in cloud layer
+      if (p.discoveryState === 'concealed') {
+        if (labelGroup) {
+          labelGroup.hintText.setVisible(false);
+          labelGroup.symbolText.setVisible(false);
+          labelGroup.qualityText.setVisible(false);
+        }
+        continue;
+      }
+
+      // 3. Hinted state: pulsating misty fog marker with (?) echo signal
+      if (p.discoveryState === 'hinted') {
+        const pulse = Math.sin(this.timeElapsed * 4 + p.baseY * 0.05);
+        const hintRadius = p.radius + pulse * 2.5;
+
+        // Faint outer sonar ripple
+        this.pocketsGraphics.lineStyle(1.5, 0x38BDF8, 0.45 + 0.25 * Math.sin(this.timeElapsed * 5));
+        this.pocketsGraphics.strokeCircle(p.x, p.y, hintRadius + 5);
+
+        // Misty translucent nebula core
+        this.pocketsGraphics.fillStyle(0x0284C7, 0.2 + 0.08 * Math.sin(this.timeElapsed * 3));
+        this.pocketsGraphics.fillCircle(p.x, p.y, hintRadius);
+
+        // Inner dotted/accent ring
+        this.pocketsGraphics.lineStyle(1.5, 0x7DD3FC, 0.65);
+        this.pocketsGraphics.strokeCircle(p.x, p.y, hintRadius * 0.6);
+
+        if (labelGroup) {
+          labelGroup.hintText.setPosition(p.x, p.y).setVisible(true);
+          labelGroup.symbolText.setVisible(false);
+          labelGroup.qualityText.setVisible(false);
+        }
+        continue;
+      }
+
+      // 4. Revealed state: radiant zone colors, jewel highlight, resource symbol, star quality & fill gauge
+      const volumeRatio = p.currentVolume / p.maxCapacity;
+
       let primaryColor: number = ColorPalette.midZone.condensateDropNum;
       let accentColor: number = ColorPalette.midZone.pastelAzureNum;
 
@@ -1064,7 +1603,7 @@ export class SkyHarvestScene extends Phaser.Scene {
       const pulse = Math.sin(this.timeElapsed * 3 + p.baseY * 0.05) * 2;
       const effectiveRadius = (p.radius + pulse) * (0.6 + volumeRatio * 0.4);
 
-      // Soft glow aura
+      // Soft radiant glow aura
       this.pocketsGraphics.fillStyle(accentColor, 0.25);
       this.pocketsGraphics.fillCircle(p.x, p.y, effectiveRadius + 6);
 
@@ -1076,16 +1615,29 @@ export class SkyHarvestScene extends Phaser.Scene {
       this.pocketsGraphics.fillStyle(accentColor, 0.9);
       this.pocketsGraphics.fillCircle(p.x - effectiveRadius * 0.3, p.y - effectiveRadius * 0.3, effectiveRadius * 0.28);
 
+      // Fill level gauge arc around pocket
+      this.pocketsGraphics.lineStyle(2, 0xE2E8F0, 0.7);
+      this.pocketsGraphics.beginPath();
+      this.pocketsGraphics.arc(p.x, p.y, effectiveRadius + 3, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * volumeRatio, false);
+      this.pocketsGraphics.strokePath();
+
       // Docked indicator ring
       if (this.isDocked && this.dockedPocket === p) {
         this.pocketsGraphics.lineStyle(2, ColorPalette.uiHarbor.brassNum, 0.95);
-        this.pocketsGraphics.strokeCircle(p.x, p.y, effectiveRadius + 4);
+        this.pocketsGraphics.strokeCircle(p.x, p.y, effectiveRadius + 5);
       }
 
       // Aurora Shimmering Ring
       if (p.isAurora) {
         this.pocketsGraphics.lineStyle(2.5, ColorPalette.lowZone.auroraPinkNum, 0.85);
         this.pocketsGraphics.strokeCircle(p.x, p.y, effectiveRadius + 8 + Math.sin(this.timeElapsed * 4) * 2);
+      }
+
+      // Text labels for revealed pocket: resource symbol & star quality
+      if (labelGroup) {
+        labelGroup.hintText.setVisible(false);
+        labelGroup.symbolText.setPosition(p.x, p.y - 4).setVisible(true);
+        labelGroup.qualityText.setPosition(p.x, p.y + 11).setVisible(true);
       }
     }
   }
@@ -1371,11 +1923,12 @@ export class SkyHarvestScene extends Phaser.Scene {
   }
 
   /**
-   * Renders expanding sonar rings and floating hint badge
+   * Renders expanding sonar rings, flying echo drone acoustic waves, and spectral scan grids
    */
   private renderSonarFX(dt: number): void {
     this.fxGraphics.clear();
 
+    // 1. Windfühler Sonar expanding rings
     for (let i = this.activeSonarPulses.length - 1; i >= 0; i--) {
       const p = this.activeSonarPulses[i];
       p.radius += 160 * dt;
@@ -1386,6 +1939,66 @@ export class SkyHarvestScene extends Phaser.Scene {
 
       if (p.radius >= p.maxRadius) {
         this.activeSonarPulses.splice(i, 1);
+      }
+    }
+
+    // 2. Echo Drone horizontal layer sweeps & animated drone
+    for (let i = this.activeDroneScans.length - 1; i >= 0; i--) {
+      const d = this.activeDroneScans[i];
+      d.x += d.speed * dt;
+      d.pulseTimer += dt;
+
+      // Trailing acoustic wave across the layer
+      this.fxGraphics.lineStyle(2.5, 0x14B8A6, 0.75);
+      this.fxGraphics.lineBetween(0, d.y, Math.min(d.x, this.cameras.main.width), d.y);
+
+      // Trailing sonar ripple
+      this.fxGraphics.lineStyle(1.5, 0x2DD4BF, 0.45);
+      this.fxGraphics.strokeCircle(Math.max(0, d.x - 22), d.y, 10 + Math.sin(d.pulseTimer * 12) * 4);
+
+      // Animated drone chassis
+      this.fxGraphics.fillStyle(0x0F172A, 0.95);
+      this.fxGraphics.fillRoundedRect(d.x - 12, d.y - 6, 24, 12, 3);
+      this.fxGraphics.lineStyle(1.5, 0x2DD4BF, 1.0);
+      this.fxGraphics.strokeRoundedRect(d.x - 12, d.y - 6, 24, 12, 3);
+
+      // Rotor blades spinning
+      const rotor = Math.sin(this.timeElapsed * 35) * 8;
+      this.fxGraphics.lineBetween(d.x - 13 - rotor, d.y - 7, d.x - 13 + rotor, d.y - 7);
+      this.fxGraphics.lineBetween(d.x + 13 - rotor, d.y - 7, d.x + 13 + rotor, d.y - 7);
+
+      // Forward sensor beam
+      this.fxGraphics.fillStyle(0x5EEAD4, 0.35);
+      this.fxGraphics.fillTriangle(d.x + 10, d.y, d.x + 40, d.y - 12, d.x + 40, d.y + 12);
+
+      if (d.x >= d.targetX) {
+        this.activeDroneScans.splice(i, 1);
+      }
+    }
+
+    // 3. Spectral Scan precision deep-scan rings & grid
+    for (let i = this.activeSpectralScans.length - 1; i >= 0; i--) {
+      const s = this.activeSpectralScans[i];
+      s.currentRadius += (s.maxRadius / 0.8) * dt;
+      s.alpha = Math.max(0, 1.0 - s.currentRadius / s.maxRadius);
+
+      // Shimmering outer rings
+      this.fxGraphics.lineStyle(2, 0xA855F7, s.alpha);
+      this.fxGraphics.strokeCircle(s.x, s.y, s.currentRadius);
+      this.fxGraphics.lineStyle(1.5, 0x38BDF8, s.alpha * 0.8);
+      this.fxGraphics.strokeCircle(s.x, s.y, s.currentRadius * 0.65);
+
+      // Scanning crosshairs
+      this.fxGraphics.lineStyle(1, 0xE0E7FF, s.alpha * 0.5);
+      this.fxGraphics.lineBetween(s.x - s.currentRadius, s.y, s.x + s.currentRadius, s.y);
+      this.fxGraphics.lineBetween(s.x, s.y - s.currentRadius, s.x, s.y + s.currentRadius);
+
+      // Soft purple holographic aura
+      this.fxGraphics.fillStyle(0x7C3AED, s.alpha * 0.12);
+      this.fxGraphics.fillCircle(s.x, s.y, s.currentRadius);
+
+      if (s.currentRadius >= s.maxRadius) {
+        this.activeSpectralScans.splice(i, 1);
       }
     }
 
@@ -1427,5 +2040,618 @@ export class SkyHarvestScene extends Phaser.Scene {
     if (tankEl) {
       tankEl.textContent = `${Math.floor(this.tankStored)} / ${this.tankMax}`;
     }
+  }
+
+  /**
+   * Initializes the 3 visible AI Rivals in the sky arena
+   */
+  private initSkyRivals(width: number): void {
+    this.skyRivals.forEach((r) => {
+      r.nameText?.destroy();
+      r.counterText?.destroy();
+    });
+
+    this.skyRivals = [
+      {
+        id: 'daredevil',
+        nameKey: 'rivals.daredevil',
+        symbol: '⚡',
+        x: width * 0.16,
+        y: 95,
+        baseXRatio: 0.16,
+        baseY: 95,
+        color: 0xEF4444, // Red aerostat
+        accentColor: 0xF59E0B, // Brass
+        flagColor: 0xDC2626,
+        totalHarvested: 0,
+        targetPocketId: null,
+        drillX: 0,
+        drillY: 0,
+        cableT: 0,
+        isDrilling: false,
+        drillTimer: 0,
+        decisionCooldown: 3.5,
+      },
+      {
+        id: 'calculator',
+        nameKey: 'rivals.calculator',
+        symbol: '📐',
+        x: width * 0.84,
+        y: 100,
+        baseXRatio: 0.84,
+        baseY: 100,
+        color: 0x10B981, // Emerald aerostat
+        accentColor: 0xD97706, // Brass
+        flagColor: 0x059669,
+        totalHarvested: 0,
+        targetPocketId: null,
+        drillX: 0,
+        drillY: 0,
+        cableT: 0,
+        isDrilling: false,
+        drillTimer: 0,
+        decisionCooldown: 5.0,
+      },
+      {
+        id: 'tracker',
+        nameKey: 'rivals.tracker',
+        symbol: '🔬',
+        x: width * 0.68,
+        y: 115,
+        baseXRatio: 0.68,
+        baseY: 115,
+        color: 0x8B5CF6, // Amethyst aerostat
+        accentColor: 0x06B6D4, // Turquoise
+        flagColor: 0x7C3AED,
+        totalHarvested: 0,
+        targetPocketId: null,
+        drillX: 0,
+        drillY: 0,
+        cableT: 0,
+        isDrilling: false,
+        drillTimer: 0,
+        decisionCooldown: 7.0,
+      },
+    ];
+
+    for (const rival of this.skyRivals) {
+      rival.nameText = this.add.text(rival.x, rival.y - 26, `${rival.symbol} ${t(rival.nameKey)}`, {
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: '10px',
+        fontStyle: 'bold',
+        color: '#F8FAFC',
+        stroke: '#0F172A',
+        strokeThickness: 3,
+      }).setOrigin(0.5).setDepth(11);
+
+      rival.counterText = this.add.text(rival.x, rival.y - 14, `0 E`, {
+        fontFamily: 'monospace',
+        fontSize: '9px',
+        color: '#FDE047',
+        stroke: '#0F172A',
+        strokeThickness: 2,
+      }).setOrigin(0.5).setDepth(11);
+    }
+  }
+
+  /**
+   * Updates autonomous AI rival drilling, decision making, and tug-of-war contests
+   */
+  private updateSkyRivals(dt: number): void {
+    const width = this.cameras.main.width;
+    if (this.lastContestedAlertTimer > 0) {
+      this.lastContestedAlertTimer -= dt;
+    }
+
+    for (let idx = 0; idx < this.skyRivals.length; idx++) {
+      const rival = this.skyRivals[idx];
+      rival.x = width * rival.baseXRatio + Math.cos(this.timeElapsed * 1.2 + idx * 2) * 5;
+      rival.y = rival.baseY + Math.sin(this.timeElapsed * 1.6 + idx * 1.7) * 3;
+
+      if (rival.nameText) {
+        rival.nameText.setPosition(rival.x, rival.y - 26);
+      }
+      if (rival.counterText) {
+        rival.counterText.setPosition(rival.x, rival.y - 14);
+        rival.counterText.setText(`${Math.floor(rival.totalHarvested)} E`);
+      }
+
+      // Autonomous drilling decision AI
+      if (!rival.isDrilling) {
+        rival.decisionCooldown -= dt;
+        if (rival.decisionCooldown <= 0) {
+          const candidates = this.cloudGrid?.getPockets().filter((p) => !p.isDepleted && p.currentVolume > 2) ?? [];
+          if (candidates.length > 0) {
+            let target = candidates[0];
+            if (rival.id === 'daredevil') {
+              candidates.sort((a, b) => (b.quality ?? 1) - (a.quality ?? 1) || Math.abs(a.x - rival.x) - Math.abs(b.x - rival.x));
+              target = candidates[0];
+            } else if (rival.id === 'calculator') {
+              candidates.sort((a, b) => b.currentVolume - a.currentVolume);
+              target = candidates[0];
+            } else {
+              candidates.sort((a, _b) => (a.zone === 'mid' ? -1 : 1));
+              target = candidates[0];
+            }
+
+            rival.targetPocketId = target.id;
+            rival.drillX = target.x;
+            rival.drillY = target.y;
+            rival.cableT = 0;
+            rival.isDrilling = true;
+            rival.drillTimer = 7.0 + Math.random() * 5.0;
+          } else {
+            rival.decisionCooldown = 4.0;
+          }
+        }
+      } else {
+        // Active drilling & lowering cable
+        rival.cableT = Math.min(1.0, rival.cableT + dt * 1.4);
+        const targetPocket = this.cloudGrid?.getPocketById(rival.targetPocketId || '');
+
+        if (!targetPocket || targetPocket.isDepleted || targetPocket.currentVolume <= 0.05) {
+          rival.isDrilling = false;
+          rival.targetPocketId = null;
+          rival.decisionCooldown = 4.0 + Math.random() * 3.0;
+        } else {
+          rival.drillX = targetPocket.x;
+          rival.drillY = targetPocket.y;
+
+          if (rival.cableT >= 1.0) {
+            const rivalRate = 4.5;
+            const extracted = this.cloudGrid.extractFromPocket(targetPocket.id, rivalRate, dt);
+            rival.totalHarvested += extracted;
+
+            // Spawn ascending droplet particle towards rival platform
+            if (Math.random() < dt * 6.5) {
+              let pColor = 0x38BDF8;
+              if (targetPocket.resourceType === 'frost') pColor = 0x7DD3FC;
+              if (targetPocket.resourceType === 'storm') pColor = 0xFDE047;
+              this.rivalParticles.push({
+                x: targetPocket.x,
+                y: targetPocket.y,
+                targetX: rival.x,
+                targetY: rival.y,
+                t: 0,
+                color: pColor,
+              });
+            }
+
+            // Tug-of-War contest: Is player also drilling this pocket?
+            if (this.isDocked && this.dockedPocket && this.dockedPocket.id === targetPocket.id) {
+              if (this.lastContestedAlertTimer <= 0) {
+                AudioManager.getInstance().playTensionRise();
+                const rivalName = t(rival.nameKey);
+                this.showScanBanner(
+                  t('arena.rivalContestedNamed').replace('{name}', rivalName),
+                  targetPocket.y - 35,
+                  '#FCA5A5',
+                  '#7F1D1DEE'
+                );
+                this.lastContestedAlertTimer = 5.0;
+              }
+
+              // Spark particles clashing
+              this.fxGraphics.fillStyle(0xFDE047, 0.85);
+              this.fxGraphics.fillCircle(
+                targetPocket.x + (Math.random() - 0.5) * 14,
+                targetPocket.y + (Math.random() - 0.5) * 14,
+                2
+              );
+            }
+
+            rival.drillTimer -= dt;
+            if (rival.drillTimer <= 0) {
+              rival.isDrilling = false;
+              rival.targetPocketId = null;
+              rival.decisionCooldown = 4.0 + Math.random() * 4.0;
+            }
+          }
+        }
+      }
+    }
+
+    // Update rising rival particles
+    for (let i = this.rivalParticles.length - 1; i >= 0; i--) {
+      const p = this.rivalParticles[i];
+      p.t += dt * 1.5;
+      if (p.t >= 1.0) {
+        this.rivalParticles.splice(i, 1);
+      }
+    }
+  }
+
+  /**
+   * Renders the visible AI Rival Harvester Platforms, cables, and extraction particles
+   */
+  private renderSkyRivalsGraphics(): void {
+    if (!this.rivalsGraphics || !this.rivalCablesGraphics) return;
+    this.rivalsGraphics.clear();
+    this.rivalCablesGraphics.clear();
+
+    for (let idx = 0; idx < this.skyRivals.length; idx++) {
+      const rival = this.skyRivals[idx];
+
+      // Draw drill cable if drilling
+      if (rival.isDrilling && rival.cableT > 0) {
+        const curDrillX = rival.x + (rival.drillX - rival.x) * rival.cableT;
+        const curDrillY = rival.y + 12 + (rival.drillY - (rival.y + 12)) * rival.cableT;
+
+        this.rivalCablesGraphics.lineStyle(1.8, 0x64748B, 0.9);
+        this.rivalCablesGraphics.lineBetween(rival.x, rival.y + 10, curDrillX, curDrillY);
+
+        // Drill head at tip
+        this.rivalCablesGraphics.fillStyle(rival.accentColor, 1.0);
+        this.rivalCablesGraphics.fillTriangle(
+          curDrillX - 4,
+          curDrillY - 6,
+          curDrillX + 4,
+          curDrillY - 6,
+          curDrillX,
+          curDrillY + 4
+        );
+      }
+
+      // Draw Aerostat Balloon Hull
+      this.rivalsGraphics.fillStyle(rival.color, 0.9);
+      this.rivalsGraphics.fillEllipse(rival.x, rival.y, 38, 26);
+      this.rivalsGraphics.lineStyle(1.5, rival.accentColor, 0.9);
+      this.rivalsGraphics.strokeEllipse(rival.x, rival.y, 38, 26);
+
+      // Specular highlight on balloon
+      this.rivalsGraphics.lineStyle(1.5, 0xFFFFFF, 0.5);
+      this.rivalsGraphics.beginPath();
+      this.rivalsGraphics.arc(rival.x - 7, rival.y - 4, 10, -Math.PI * 0.7, -Math.PI * 0.1);
+      this.rivalsGraphics.stroke();
+
+      // Gondola basket underneath
+      this.rivalsGraphics.fillStyle(0x0F172A, 0.95);
+      this.rivalsGraphics.fillRoundedRect(rival.x - 9, rival.y + 10, 18, 9, 2);
+      this.rivalsGraphics.lineStyle(1.2, rival.accentColor, 0.9);
+      this.rivalsGraphics.strokeRoundedRect(rival.x - 9, rival.y + 10, 18, 9, 2);
+
+      // Suspension cords to gondola
+      this.rivalsGraphics.lineStyle(1, 0x64748B, 0.75);
+      this.rivalsGraphics.lineBetween(rival.x - 12, rival.y + 4, rival.x - 8, rival.y + 10);
+      this.rivalsGraphics.lineBetween(rival.x + 12, rival.y + 4, rival.x + 8, rival.y + 10);
+
+      // Specific Visual Flavors
+      if (rival.id === 'daredevil') {
+        const flagWave = Math.sin(this.timeElapsed * 7) * 4;
+        this.rivalsGraphics.lineStyle(1.5, 0xCBD5E1, 1.0);
+        this.rivalsGraphics.lineBetween(rival.x, rival.y - 13, rival.x, rival.y - 23);
+        this.rivalsGraphics.fillStyle(rival.flagColor, 0.95);
+        this.rivalsGraphics.fillTriangle(
+          rival.x,
+          rival.y - 23,
+          rival.x + 10 + flagWave,
+          rival.y - 18,
+          rival.x,
+          rival.y - 13
+        );
+      } else if (rival.id === 'calculator') {
+        const gearAngle = this.timeElapsed * 2.5;
+        const gx = rival.x;
+        const gy = rival.y - 14;
+        this.rivalsGraphics.lineStyle(1.5, 0xF59E0B, 0.85);
+        this.rivalsGraphics.strokeCircle(gx, gy, 5);
+        this.rivalsGraphics.lineBetween(
+          gx + Math.cos(gearAngle) * 5,
+          gy + Math.sin(gearAngle) * 5,
+          gx - Math.cos(gearAngle) * 5,
+          gy - Math.sin(gearAngle) * 5
+        );
+      } else if (rival.id === 'tracker') {
+        const radarAngle = this.timeElapsed * 3.5;
+        const rx = rival.x;
+        const ry = rival.y - 14;
+        this.rivalsGraphics.lineStyle(1.5, 0x06B6D4, 0.9);
+        this.rivalsGraphics.beginPath();
+        this.rivalsGraphics.arc(rx, ry, 6, radarAngle, radarAngle + Math.PI * 0.8);
+        this.rivalsGraphics.stroke();
+      }
+    }
+
+    // Render ascending particles along rival cables
+    for (const p of this.rivalParticles) {
+      const curX = p.x + (p.targetX - p.x) * p.t;
+      const curY = p.y + (p.targetY - p.y) * p.t;
+      this.rivalCablesGraphics.fillStyle(p.color, 0.9);
+      this.rivalCablesGraphics.fillCircle(curX, curY, 2.5);
+    }
+  }
+
+  /**
+   * Renders user-built Custom Pipelines, Custom Storage Balloons, and active tool previews
+   */
+  private renderInteractiveLogistics(platformX: number, platformY: number): void {
+    if (!this.logisticsInteractiveGraphics) return;
+    this.logisticsInteractiveGraphics.clear();
+    const width = this.cameras.main.width;
+
+    // 1. Render all Custom Pipes
+    for (let i = 0; i < this.customPipes.length; i++) {
+      const p = this.customPipes[i];
+      const midX = (p.startX + p.endX) / 2;
+      const midY = (p.startY + p.endY) / 2 + Math.min(22, Math.hypot(p.endX - p.startX, p.endY - p.startY) * 0.1);
+
+      const curve = new Phaser.Curves.QuadraticBezier(
+        new Phaser.Math.Vector2(p.startX, p.startY),
+        new Phaser.Math.Vector2(midX, midY),
+        new Phaser.Math.Vector2(p.endX, p.endY)
+      );
+
+      // Cyan outer glow
+      this.logisticsInteractiveGraphics.lineStyle(4, 0x0891B2, 0.4);
+      this.logisticsInteractiveGraphics.strokePoints(curve.getPoints(16));
+
+      // Crisp Cyan metallic core
+      this.logisticsInteractiveGraphics.lineStyle(2, 0x38BDF8, 0.9);
+      this.logisticsInteractiveGraphics.strokePoints(curve.getPoints(16));
+
+      // Metallic brass joints at start and end
+      this.logisticsInteractiveGraphics.fillStyle(0xF59E0B, 0.95);
+      this.logisticsInteractiveGraphics.fillCircle(p.startX, p.startY, 4);
+      this.logisticsInteractiveGraphics.fillCircle(p.endX, p.endY, 4);
+
+      // Flowing droplets along pipe
+      for (let dot = 0; dot < 2; dot++) {
+        const tVal = (this.timeElapsed * 1.4 + i * 0.3 + dot * 0.5) % 1.0;
+        const pt = curve.getPoint(tVal);
+        this.logisticsInteractiveGraphics.fillStyle(0x67E8F9, 0.9);
+        this.logisticsInteractiveGraphics.fillCircle(pt.x, pt.y, 2.5);
+      }
+    }
+
+    // 2. Render all Custom Balloons
+    const totalStored = this.tankStored;
+    const maxCapacity = this.tankMax;
+    const fillRatio = Math.min(1.0, totalStored / maxCapacity);
+
+    for (let i = 0; i < this.customBalloons.length; i++) {
+      const b = this.customBalloons[i];
+      const currY = b.y + Math.sin(this.timeElapsed * 1.8 + b.bobPhase) * 2;
+
+      // Suspension cable to platform
+      this.logisticsInteractiveGraphics.lineStyle(1.5, 0x475569, 0.7);
+      this.logisticsInteractiveGraphics.lineBetween(platformX, platformY, b.x, currY);
+
+      // Outer hull
+      this.logisticsInteractiveGraphics.fillStyle(0x0F172A, 0.9);
+      this.logisticsInteractiveGraphics.fillCircle(b.x, currY, 16);
+      this.logisticsInteractiveGraphics.lineStyle(1.8, 0xF59E0B, 0.9);
+      this.logisticsInteractiveGraphics.strokeCircle(b.x, currY, 16);
+
+      // Fluid fill
+      if (fillRatio > 0.02) {
+        const fillR = 16 * Math.min(1.0, 0.35 + fillRatio * 0.65);
+        this.logisticsInteractiveGraphics.fillStyle(0x38BDF8, 0.85);
+        this.logisticsInteractiveGraphics.fillCircle(b.x, currY + (16 - fillR) * 0.35, fillR);
+      }
+
+      // Specular highlight
+      this.logisticsInteractiveGraphics.lineStyle(1.2, 0xFFFFFF, 0.5);
+      this.logisticsInteractiveGraphics.beginPath();
+      this.logisticsInteractiveGraphics.arc(b.x - 5, currY - 5, 8, -Math.PI * 0.7, -Math.PI * 0.1);
+      this.logisticsInteractiveGraphics.stroke();
+
+      // Brass bottom collar
+      this.logisticsInteractiveGraphics.fillStyle(0xF59E0B, 1.0);
+      this.logisticsInteractiveGraphics.fillRect(b.x - 3, currY + 14, 6, 4);
+    }
+
+    // 3. Interactive Pipe Tool Reticle & Dashed Preview Line
+    if (this.activeTool === 'pipe') {
+      const px = this.pointerCurrentX;
+      const py = this.pointerCurrentY;
+
+      // Cyan Reticle
+      this.logisticsInteractiveGraphics.lineStyle(1.5, 0x38BDF8, 0.85);
+      this.logisticsInteractiveGraphics.strokeCircle(px, py, 10);
+      this.logisticsInteractiveGraphics.lineBetween(px - 14, py, px - 6, py);
+      this.logisticsInteractiveGraphics.lineBetween(px + 6, py, px + 14, py);
+      this.logisticsInteractiveGraphics.lineBetween(px, py - 14, px, py - 6);
+      this.logisticsInteractiveGraphics.lineBetween(px, py + 6, px, py + 14);
+
+      // Preview Line if Dragging
+      if (this.isBuildingPipe && this.pipeDragStart) {
+        const sx = this.pipeDragStart.x;
+        const sy = this.pipeDragStart.y;
+        const midX = (sx + px) / 2;
+        const midY = (sy + py) / 2 + 16;
+        const curve = new Phaser.Curves.QuadraticBezier(
+          new Phaser.Math.Vector2(sx, sy),
+          new Phaser.Math.Vector2(midX, midY),
+          new Phaser.Math.Vector2(px, py)
+        );
+
+        const pts = curve.getPoints(12);
+        this.logisticsInteractiveGraphics.lineStyle(2, 0x38BDF8, 0.8);
+        for (let j = 0; j < pts.length - 1; j += 2) {
+          this.logisticsInteractiveGraphics.lineBetween(pts[j].x, pts[j].y, pts[j + 1].x, pts[j + 1].y);
+        }
+      }
+    }
+
+    // 4. Interactive Ghost Balloon for Tank Tool
+    if (this.activeTool === 'tank') {
+      const gx = Phaser.Math.Clamp(this.pointerCurrentX, 40, width - 40);
+      const gy = Phaser.Math.Clamp(this.pointerCurrentY, 70, 120);
+
+      this.logisticsInteractiveGraphics.fillStyle(0x0F172A, 0.45);
+      this.logisticsInteractiveGraphics.fillCircle(gx, gy, 16);
+      this.logisticsInteractiveGraphics.lineStyle(1.8, 0xF59E0B, 0.85);
+      this.logisticsInteractiveGraphics.strokeCircle(gx, gy, 16);
+
+      this.logisticsInteractiveGraphics.lineStyle(1, 0x94A3B8, 0.5);
+      this.logisticsInteractiveGraphics.lineBetween(platformX, platformY, gx, gy);
+
+      this.logisticsInteractiveGraphics.fillStyle(0xF59E0B, 0.8);
+      this.logisticsInteractiveGraphics.fillRect(gx - 3, gy + 14, 6, 4);
+    }
+  }
+
+  /**
+   * Action Banner when cloud band is depleted (Nächste Woche / Plattform umsetzen)
+   */
+  private createReplenishBanner(width: number): void {
+    if (this.replenishBannerContainer) {
+      this.replenishBannerContainer.destroy();
+      this.replenishBannerContainer = null;
+    }
+
+    const container = this.add.container(width / 2, 140).setDepth(22).setVisible(false);
+
+    // Background card (Rule 7: Dark theme)
+    const cardBg = this.add.graphics();
+    cardBg.fillStyle(0x0F172A, 0.94);
+    cardBg.fillRoundedRect(-180, -32, 360, 64, 8);
+    cardBg.lineStyle(1.5, 0x38BDF8, 0.9);
+    cardBg.strokeRoundedRect(-180, -32, 360, 64, 8);
+    container.add(cardBg);
+
+    // Title Text
+    const titleText = this.add.text(0, -18, t('cloudReplenish.depletedBanner'), {
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: '#FDE047',
+    }).setOrigin(0.5);
+    container.add(titleText);
+
+    // Button 1: Nächste Woche
+    const btn1Bg = this.add.graphics();
+    btn1Bg.fillStyle(0x0369A1, 0.9);
+    btn1Bg.fillRoundedRect(-165, -2, 155, 24, 5);
+    btn1Bg.lineStyle(1, 0x38BDF8, 0.8);
+    btn1Bg.strokeRoundedRect(-165, -2, 155, 24, 5);
+    container.add(btn1Bg);
+
+    const btn1Text = this.add.text(-87, 10, t('cloudReplenish.advanceWeekBtn'), {
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#FFFFFF',
+    }).setOrigin(0.5);
+    container.add(btn1Text);
+
+    const hitZone1 = this.add.zone(-87, 10, 155, 24).setOrigin(0.5).setInteractive({ cursor: 'pointer' });
+    hitZone1.on('pointerdown', (e: Phaser.Input.Pointer) => {
+      e.event?.stopPropagation?.();
+      this.advanceWeekAndReplenish();
+    });
+    container.add(hitZone1);
+
+    // Button 2: Plattform umsetzen (50 CR)
+    const btn2Bg = this.add.graphics();
+    btn2Bg.fillStyle(0x78350F, 0.9);
+    btn2Bg.fillRoundedRect(10, -2, 155, 24, 5);
+    btn2Bg.lineStyle(1, 0xF59E0B, 0.8);
+    btn2Bg.strokeRoundedRect(10, -2, 155, 24, 5);
+    container.add(btn2Bg);
+
+    const btn2Text = this.add.text(87, 10, t('cloudReplenish.relocateBtn'), {
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#FDE047',
+    }).setOrigin(0.5);
+    container.add(btn2Text);
+
+    const hitZone2 = this.add.zone(87, 10, 155, 24).setOrigin(0.5).setInteractive({ cursor: 'pointer' });
+    hitZone2.on('pointerdown', (e: Phaser.Input.Pointer) => {
+      e.event?.stopPropagation?.();
+      this.relocatePlatform();
+    });
+    container.add(hitZone2);
+
+    this.replenishBannerContainer = container;
+  }
+
+  private updateReplenishBanner(): void {
+    const allDepleted = this.cloudGrid?.isAllDepleted() ?? false;
+    if (allDepleted && !this.isReplenishingDrift) {
+      if (this.replenishBannerContainer && !this.replenishBannerContainer.visible) {
+        this.replenishBannerContainer.setVisible(true);
+      }
+    } else {
+      if (this.replenishBannerContainer?.visible) {
+        this.replenishBannerContainer.setVisible(false);
+      }
+    }
+  }
+
+  public advanceWeekAndReplenish(): void {
+    AudioManager.getInstance().playUiClick();
+    this.isReplenishingDrift = true;
+    if (this.replenishBannerContainer) {
+      this.replenishBannerContainer.setVisible(false);
+    }
+
+    const gs = GameState.getInstance();
+    gs.advanceWeek();
+    const newWeek = gs.getData().week;
+    this.currentWeek = newWeek;
+    this.updateHeaderLabels();
+    this.updateTankDisplay();
+
+    // Trigger smooth horizontal parallax drift
+    const newBand = AuctionEngine.createReplenishedBand(newWeek, gs.getData().season);
+    gs.setActiveCloudBand(newBand);
+    this.activeBand = newBand;
+
+    if (this.cameras?.main) {
+      this.tweens?.add({
+        targets: this.cameras.main,
+        alpha: 0.7,
+        duration: 350,
+        yoyo: true,
+        onYoyo: () => {
+          this.cloudGrid?.loadCloudBand(newBand);
+          this.initPocketLabels();
+          AudioManager.getInstance().playAuctionBell();
+          this.showScanBanner(`${t('cloudReplenish.replenished')} ${newWeek}!`, 150, '#7DD3FC', '#0C4A6EEE');
+        },
+        onComplete: () => {
+          this.isReplenishingDrift = false;
+        },
+      });
+    } else {
+      this.cloudGrid?.loadCloudBand(newBand);
+      this.initPocketLabels();
+      this.isReplenishingDrift = false;
+    }
+  }
+
+  public relocatePlatform(): boolean {
+    const gs = GameState.getInstance();
+    const cost = 50;
+    if (gs.getCredits() < cost) {
+      this.showScanBanner(t('cloudReplenish.notEnoughCreditsRelocate'), 140, '#FCA5A5', '#450A0ACC');
+      AudioManager.getInstance().playUiClick();
+      return false;
+    }
+
+    gs.deductCredits(cost);
+    this.updateCreditsDisplay();
+    AudioManager.getInstance().playSteamVent();
+
+    const shift = 180;
+    this.platformOffsetX = (this.platformOffsetX + shift) % (this.cameras?.main?.width || 540);
+    this.cloudGrid?.shiftPockets(shift);
+    this.initPocketLabels();
+
+    if (this.platform) {
+      this.tweens?.add({
+        targets: this.platform,
+        y: this.platform.y - 10,
+        yoyo: true,
+        duration: 180,
+        ease: 'Quad.easeInOut',
+      });
+    }
+
+    this.showScanBanner(t('cloudReplenish.relocated'), 140, '#FDE047', '#451A03EE');
+    return true;
   }
 }

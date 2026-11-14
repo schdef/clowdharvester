@@ -80,6 +80,9 @@ export class BootScene extends Phaser.Scene {
         currentVolume: 120,
         isDepleted: false,
         valuePerUnit: 25,
+        discoveryState: 'concealed',
+        quality: 2,
+        sizeCategory: 'M',
       },
       {
         id: 'pocket-starter-2',
@@ -95,6 +98,9 @@ export class BootScene extends Phaser.Scene {
         currentVolume: 150,
         isDepleted: false,
         valuePerUnit: 10,
+        discoveryState: 'concealed',
+        quality: 1,
+        sizeCategory: 'L',
       },
       {
         id: 'pocket-starter-3',
@@ -110,6 +116,9 @@ export class BootScene extends Phaser.Scene {
         currentVolume: 180,
         isDepleted: false,
         valuePerUnit: 18,
+        discoveryState: 'concealed',
+        quality: 3,
+        sizeCategory: 'S',
       },
     ];
 

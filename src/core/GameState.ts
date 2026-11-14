@@ -38,6 +38,7 @@ export interface GameStateData {
   wonBands: CloudBand[];
   inventory: InventoryState;
   upgrades: UpgradeState;
+  bonusStorage?: number;
 }
 
 const STORAGE_KEY = 'cloud_harvesters_gamestate_v2';
@@ -76,6 +77,7 @@ export class GameState {
         tankLevel: 1,
         droneLevel: 1,
       },
+      bonusStorage: 0,
     };
 
     // Ensure council engine matches loaded credits
@@ -115,7 +117,17 @@ export class GameState {
   }
 
   public getMaxStorageCapacity(): number {
-    return LogisticsNet.getTankCapacity(this.data.upgrades.tankLevel);
+    return LogisticsNet.getTankCapacity(this.data.upgrades.tankLevel) + (this.data.bonusStorage || 0);
+  }
+
+  public expandStorage(amount: number): number {
+    this.data.bonusStorage = (this.data.bonusStorage || 0) + amount;
+    this.saveState();
+    return this.getMaxStorageCapacity();
+  }
+
+  public getBonusStorage(): number {
+    return this.data.bonusStorage || 0;
   }
 
   public getGameSpeed(): number {
@@ -272,6 +284,10 @@ export class GameState {
       return true;
     }
     return false;
+  }
+
+  public getCredits(): number {
+    return this.data.credits;
   }
 
   public setCredits(amount: number): void {

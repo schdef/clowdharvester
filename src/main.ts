@@ -211,10 +211,6 @@ document.addEventListener('DOMContentLoaded', () => {
     game.events.emit('tool:change', tool);
     if (tool === 'sell') {
       harborModal.open('market');
-    } else if (tool === 'pipe') {
-      harborModal.open('upgrades', 'pipe');
-    } else if (tool === 'tank') {
-      harborModal.open('upgrades', 'tank');
     }
     const scene = game.scene.getScene('SkyHarvestScene') as SkyHarvestScene | undefined;
     if (scene && typeof scene.setTool === 'function') {
@@ -231,6 +227,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const scene = game.scene.getScene('SkyHarvestScene') as SkyHarvestScene | undefined;
     if (scene && typeof scene.setDrillHead === 'function') {
       scene.setDrillHead(head);
+    }
+  });
+
+  toolBar.onScanToolChange((scanTool) => {
+    game.events.emit('scantool:change', scanTool);
+    const scene = game.scene.getScene('SkyHarvestScene') as SkyHarvestScene | undefined;
+    if (scene && typeof scene.setScanTool === 'function') {
+      scene.setScanTool(scanTool);
     }
   });
 

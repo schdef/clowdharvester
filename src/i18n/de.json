@@ -83,6 +83,7 @@
   },
   "tools": {
     "head": "Kopf:",
+    "scanSubTitle": "Scan-Systeme:",
     "key": "Taste",
     "scan": "Scan",
     "scanDesc": "Windfühler & Echodrohne",
@@ -94,6 +95,14 @@
     "tankDesc": "Schwebender Tankballon",
     "sell": "Hafen",
     "sellDesc": "Marktverkauf im Himmelsdock"
+  },
+  "scanTools": {
+    "windSensor": "Windfühler",
+    "windSensorDesc": "160px Sonarwelle • Echos im Umkreis",
+    "echoDrone": "Echo-Drohne",
+    "echoDroneDesc": "Schichtüberflug • Echos in der Höhe",
+    "spectralScan": "Spektralscan",
+    "spectralScanDesc": "Tiefenscan • Volle Aufdeckung"
   },
   "drillHeads": {
     "ice": "Eisbohrer",
@@ -113,7 +122,12 @@
     "hot": "SEHR HEISS! 🔥 In Reichweite",
     "warmer": "WÄRMER! ⚡ Wolkentemperatur steigt",
     "colder": "KALT... ❄ Kein Signal im Nahbereich",
-    "hint": "Windfühler-Ping aktiv"
+    "hint": "Windfühler-Ping aktiv",
+    "droneScanning": "Echo-Drohne scannt Schicht",
+    "spectralFound": "🔬 Spektralscan: Vorkommen analysiert!",
+    "spectralEmpty": "🔬 Spektralscan: Keine Vorkommen im Scan-Radius",
+    "notEnoughCredits": "Nicht genügend Credits!",
+    "blindDiscovery": "🎉 Volltreffer! Verdecktes Vorkommen entdeckt!"
   },
   "radar": {
     "title": "4-Wochen-Windradar",
@@ -297,9 +311,13 @@
       "tip": "💡 Voller Tank? Schließe Förderleitungen an oder liefere an der Himmelshafen-Börse ab, um Credits (CR) zu kassieren."
     },
     "step5": {
-      "title": "Windfühler-Sonar-Scan",
-      "lead": "Nutze das Sonar, wenn Taschen im Nebel verborgen sind.",
-      "text": "Wähle Werkzeug-Slot 1 [Taste 1] für den Windfühler. Klicke in die Wolkendecke, um eine Sonarwelle auszusenden. Die akustischen Heiß/Kalt-Signale leiten dich:",
+      "title": "Verdeckte Vorkommen & Scan-Erkundung",
+      "lead": "Kondensattaschen liegen zunächst unsichtbar im dichten Wolkennebel verborgen!",
+      "text": "Lokalisiere Rohstoffe mit deinen 3 Scan-Werkzeugen [Slot 1] oder durch mutiges Blind-Bohren direkt in den Nebel:",
+      "toolWind": "📡 Windfühler (50 CR) [Taste 1 / A]: Sendet eine 160px-Sonarwelle aus und markiert Taschen im Umkreis mit (?) Echos.",
+      "toolDrone": "🚁 Echo-Drohne (150 CR) [Taste 2 / S]: Überfliegt eine Schicht (0-11) und deckt alle Taschen dieser Höhenlage als Echo auf.",
+      "toolSpectral": "🔬 Spektralscan (400 CR) [Taste 3 / D]: Präzisions-Tiefenscan im Zielbereich, der Vorkommen inklusive Sternenqualität und Rohstoff sofort voll aufdeckt!",
+      "blindDrillTip": "💡 Blind-Bohren: Triffst du eine verdeckte Tasche direkt mit der Sonde (< 35px), wird sie sofort entdeckt und angezapft!",
       "hotDesc": "< 70px • Tasche direkt am Bohrkopf!",
       "warmerDesc": "< 160px • Signal verstärkt sich",
       "colderDesc": "Außerhalb Radar-Reichweite",
@@ -384,5 +402,26 @@
     "spring_winds": "Frühlingswinde",
     "summer_drifts": "Sommerzüge",
     "storm_season": "Sturmsaison"
+  },
+  "arena": {
+    "rivalContested": "⚔️ Rivale zapft dieselbe Tasche an!",
+    "rivalContestedNamed": "⚔️ {name} zapft dieselbe Tasche an!",
+    "harvested": "Gefördert"
+  },
+  "logisticsTool": {
+    "pipeCostTooltip": "Rohrsegment: 30 CR",
+    "pipeConnected": "🔗 Rohrleitung verbunden! (-30 CR)",
+    "notEnoughCreditsPipe": "⚠️ Nicht genug Credits für Rohr (30 CR)!",
+    "tankGhostLabel": "+40 Kapazität (100 CR)",
+    "tankAnchored": "🎈 Speicherballon verankert! (+40 Kapazität, -100 CR)",
+    "notEnoughCreditsTank": "⚠️ Nicht genug Credits für Speicherballon (100 CR)!"
+  },
+  "cloudReplenish": {
+    "depletedBanner": "☁️ Wolkenband erschöpft",
+    "advanceWeekBtn": "☁️ NÄCHSTE WOCHE",
+    "relocateBtn": "⚓ PLATTFORM UMSETZEN (50 CR)",
+    "relocated": "⚓ Plattform umgesetzt! (-50 CR)",
+    "notEnoughCreditsRelocate": "⚠️ Nicht genug Credits zum Umsetzen (50 CR)!",
+    "replenished": "☁️ Frisches Wolkenband erreicht! Woche"
   }
 }

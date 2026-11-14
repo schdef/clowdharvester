@@ -83,6 +83,7 @@
   },
   "tools": {
     "head": "Head:",
+    "scanSubTitle": "Scan Systems:",
     "key": "Key",
     "scan": "Scan",
     "scanDesc": "Wind Sensor & Echo Drone",
@@ -94,6 +95,14 @@
     "tankDesc": "Floating Storage Balloon",
     "sell": "Harbor",
     "sellDesc": "Market Exchange at Sky Dock"
+  },
+  "scanTools": {
+    "windSensor": "Wind Sensor",
+    "windSensorDesc": "160px sonar wave • Nearby echoes",
+    "echoDrone": "Echo Drone",
+    "echoDroneDesc": "Layer sweep • Altitude echoes",
+    "spectralScan": "Spectral Scan",
+    "spectralScanDesc": "Deep scan • Full reveal"
   },
   "drillHeads": {
     "ice": "Ice Drill",
@@ -113,7 +122,12 @@
     "hot": "VERY HOT! 🔥 Target in range",
     "warmer": "WARMER! ⚡ Cloud reading rising",
     "colder": "COLD... ❄ No signal nearby",
-    "hint": "Wind Sensor Ping active"
+    "hint": "Wind Sensor Ping active",
+    "droneScanning": "Echo Drone scanning layer",
+    "spectralFound": "🔬 Spectral Scan: Deposit analyzed!",
+    "spectralEmpty": "🔬 Spectral Scan: No deposits in scan radius",
+    "notEnoughCredits": "Not enough Credits!",
+    "blindDiscovery": "🎉 Direct hit! Concealed deposit discovered!"
   },
   "radar": {
     "title": "4-Week Wind Radar",
@@ -297,9 +311,13 @@
       "tip": "💡 Tank full? Connect logistics pipes or sell at the Harbor Market to bank Credits (CR)."
     },
     "step5": {
-      "title": "Wind Sensor Sonar Scan",
-      "lead": "Use the sonar when valuable pockets are shrouded in dense haze.",
-      "text": "Select tool slot 1 [Key 1] for the Wind Sensor. Click anywhere in the cloud layers to emit an acoustic sonar wave. The hot/cold telemetry leads the way:",
+      "title": "Concealed Deposits & Scan Exploration",
+      "lead": "Condensate pockets lie initially concealed inside the dense cloud fog!",
+      "text": "Locate minerals using your 3 scanning tools [Slot 1] or through bold blind drilling directly into the haze:",
+      "toolWind": "📡 Wind Sensor (50 CR) [Key 1 / A]: Emits a 160px sonar ping and marks nearby pockets with (?) echoes.",
+      "toolDrone": "🚁 Echo Drone (150 CR) [Key 2 / S]: Sweeps across a cloud layer (0-11) and reveals all pockets in that altitude as echoes.",
+      "toolSpectral": "🔬 Spectral Scan (400 CR) [Key 3 / D]: Precision deep-scan revealing deposits immediately with full resource type and star quality!",
+      "blindDrillTip": "💡 Blind Drilling: If your probe strikes a concealed pocket directly (< 35px), it is instantly revealed and docked!",
       "hotDesc": "< 70px • Pocket directly at probe tip!",
       "warmerDesc": "< 160px • Signal intensity rising",
       "colderDesc": "Outside sonar range",
@@ -384,5 +402,26 @@
     "spring_winds": "Spring Winds",
     "summer_drifts": "Summer Drifts",
     "storm_season": "Storm Season"
+  },
+  "arena": {
+    "rivalContested": "⚔️ Rival is tapping the same pocket!",
+    "rivalContestedNamed": "⚔️ {name} is tapping the same pocket!",
+    "harvested": "Harvested"
+  },
+  "logisticsTool": {
+    "pipeCostTooltip": "Pipeline segment: 30 CR",
+    "pipeConnected": "🔗 Pipeline connected! (-30 CR)",
+    "notEnoughCreditsPipe": "⚠️ Not enough credits for pipeline (30 CR)!",
+    "tankGhostLabel": "+40 Capacity (100 CR)",
+    "tankAnchored": "🎈 Storage balloon anchored! (+40 capacity, -100 CR)",
+    "notEnoughCreditsTank": "⚠️ Not enough credits for storage balloon (100 CR)!"
+  },
+  "cloudReplenish": {
+    "depletedBanner": "☁️ Cloud Band Depleted",
+    "advanceWeekBtn": "☁️ ADVANCE WEEK",
+    "relocateBtn": "⚓ RELOCATE (50 CR)",
+    "relocated": "⚓ Platform relocated! (-50 CR)",
+    "notEnoughCreditsRelocate": "⚠️ Not enough credits to relocate (50 CR)!",
+    "replenished": "☁️ Fresh cloud band reached! Week"
   }
 }

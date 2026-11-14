@@ -284,34 +284,62 @@ export class TutorialModal {
 
       case 5:
         return `
-          <div class="space-y-4">
-            <p class="text-sm text-slate-300 leading-relaxed">
+          <div class="space-y-3.5">
+            <p class="text-sm text-slate-300 leading-relaxed font-medium">
               ${t('tutorial.step5.lead')}
             </p>
             <p class="text-xs text-slate-300 leading-relaxed">
               ${t('tutorial.step5.text')}
             </p>
-            <div class="space-y-2">
-              <div class="p-2 rounded-lg bg-amber-950/40 border border-amber-800/40 text-xs text-amber-200 flex items-center justify-between">
+
+            <!-- 3 Graduated Scan Tools -->
+            <div class="space-y-1.5 text-xs">
+              <div class="p-2 rounded-lg bg-sky-950/50 border border-sky-700/50 text-sky-200 space-y-0.5">
+                <div class="font-bold text-sky-300 flex items-center justify-between">
+                  <span>${t('tutorial.step5.toolWind')}</span>
+                </div>
+              </div>
+
+              <div class="p-2 rounded-lg bg-teal-950/50 border border-teal-700/50 text-teal-200 space-y-0.5">
+                <div class="font-bold text-teal-300 flex items-center justify-between">
+                  <span>${t('tutorial.step5.toolDrone')}</span>
+                </div>
+              </div>
+
+              <div class="p-2 rounded-lg bg-purple-950/50 border border-purple-700/50 text-purple-200 space-y-0.5">
+                <div class="font-bold text-purple-300 flex items-center justify-between">
+                  <span>${t('tutorial.step5.toolSpectral')}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Blind Drilling Pro-Tip -->
+            <div class="p-2 rounded-lg bg-amber-950/40 border border-amber-800/40 text-xs text-amber-200">
+              ${t('tutorial.step5.blindDrillTip')}
+            </div>
+
+            <!-- Hot/Warmer/Colder Sonar Echo Scale -->
+            <div class="space-y-1">
+              <div class="p-1.5 rounded-lg bg-amber-950/30 border border-amber-800/30 text-[11px] text-amber-200 flex items-center justify-between">
                 <span class="font-bold flex items-center space-x-1.5">
                   <span>🔥</span>
                   <span>${t('sonar.veryHot')}</span>
                 </span>
-                <span class="text-slate-300 font-mono">${t('tutorial.step5.hotDesc')}</span>
+                <span class="text-slate-300 font-mono text-[10px]">${t('tutorial.step5.hotDesc')}</span>
               </div>
-              <div class="p-2 rounded-lg bg-sky-950/40 border border-sky-800/40 text-xs text-sky-200 flex items-center justify-between">
+              <div class="p-1.5 rounded-lg bg-sky-950/30 border border-sky-800/30 text-[11px] text-sky-200 flex items-center justify-between">
                 <span class="font-bold flex items-center space-x-1.5">
                   <span>⚡</span>
                   <span>${t('sonar.warmer')}</span>
                 </span>
-                <span class="text-slate-300 font-mono">${t('tutorial.step5.warmerDesc')}</span>
+                <span class="text-slate-300 font-mono text-[10px]">${t('tutorial.step5.warmerDesc')}</span>
               </div>
-              <div class="p-2 rounded-lg bg-slate-800/50 border border-slate-700/60 text-xs text-slate-300 flex items-center justify-between">
+              <div class="p-1.5 rounded-lg bg-slate-800/40 border border-slate-700/50 text-[11px] text-slate-300 flex items-center justify-between">
                 <span class="font-bold flex items-center space-x-1.5">
                   <span>❄️</span>
                   <span>${t('sonar.colder')}</span>
                 </span>
-                <span class="text-slate-400 font-mono">${t('tutorial.step5.colderDesc')}</span>
+                <span class="text-slate-400 font-mono text-[10px]">${t('tutorial.step5.colderDesc')}</span>
               </div>
             </div>
           </div>

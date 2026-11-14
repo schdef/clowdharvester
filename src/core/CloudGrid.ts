@@ -1,5 +1,6 @@
 import { ZoneType, getZoneFromLayer } from '../gfx/ColorPalette';
 import { DriftSystem } from './DriftSystem';
+import type { CloudBand } from './AuctionEngine';
 
 /**
  * Cloud Harvesters - CloudGrid Core Simulation
@@ -31,6 +32,8 @@ export interface CloudCell {
   carveTimer: number;   // Remaining seconds until fully healed
 }
 
+export type DiscoveryState = 'concealed' | 'hinted' | 'revealed' | 'exhausted';
+
 export interface CondensatePocket {
   id: string;
   name: string;
@@ -47,6 +50,9 @@ export interface CondensatePocket {
   valuePerUnit: number;
   isAurora?: boolean;
   hasAwardedAurora?: boolean;
+  discoveryState: DiscoveryState;
+  quality?: 1 | 2 | 3;
+  sizeCategory?: 'S' | 'M' | 'L';
 }
 
 export class CloudGrid {
@@ -77,6 +83,9 @@ export class CloudGrid {
           baseY: p.baseY * yRatio,
           x: p.x * xRatio,
           y: p.y * yRatio,
+          discoveryState: p.discoveryState ?? 'concealed',
+          quality: p.quality ?? 2,
+          sizeCategory: p.sizeCategory ?? 'M',
         };
       });
     } else {
@@ -176,6 +185,9 @@ export class CloudGrid {
         currentVolume: 100,
         isDepleted: false,
         valuePerUnit: 25,
+        discoveryState: 'concealed',
+        quality: 2,
+        sizeCategory: 'M',
       },
       {
         id: 'pocket-mid-1',
@@ -191,6 +203,9 @@ export class CloudGrid {
         currentVolume: 120,
         isDepleted: false,
         valuePerUnit: 10,
+        discoveryState: 'concealed',
+        quality: 1,
+        sizeCategory: 'L',
       },
       {
         id: 'pocket-low-1',
@@ -208,6 +223,9 @@ export class CloudGrid {
         valuePerUnit: 18,
         isAurora: true,
         hasAwardedAurora: false,
+        discoveryState: 'concealed',
+        quality: 3,
+        sizeCategory: 'S',
       },
     ];
   }
@@ -350,8 +368,105 @@ export class CloudGrid {
     if (pocket.currentVolume <= 0.01) {
       pocket.isDepleted = true;
       pocket.currentVolume = 0;
+      pocket.discoveryState = 'exhausted';
     }
     return actual;
+  }
+
+  /**
+   * Pockets discovery queries and state modifiers
+   */
+  public getConcealedPockets(): CondensatePocket[] {
+    return this.pockets.filter((p) => p.discoveryState === 'concealed' && !p.isDepleted);
+  }
+
+  public getHintedPockets(): CondensatePocket[] {
+    return this.pockets.filter((p) => p.discoveryState === 'hinted' && !p.isDepleted);
+  }
+
+  public getRevealedPockets(): CondensatePocket[] {
+    return this.pockets.filter((p) => p.discoveryState === 'revealed' && !p.isDepleted);
+  }
+
+  /**
+   * Windfühler scan: transitions concealed pockets within radius to 'hinted'
+   */
+  public hintPocketsInRadius(worldX: number, worldY: number, radius = 160): CondensatePocket[] {
+    const affected: CondensatePocket[] = [];
+    const r2 = radius * radius;
+    for (const p of this.pockets) {
+      if (p.isDepleted || p.discoveryState !== 'concealed') continue;
+      const dx = p.x - worldX;
+      const dy = p.y - worldY;
+      if (dx * dx + dy * dy <= r2) {
+        p.discoveryState = 'hinted';
+        affected.push(p);
+      }
+    }
+    return affected;
+  }
+
+  /**
+   * Echo drone scan: transitions concealed pockets in targeted layer to 'hinted'
+   */
+  public hintPocketsInLayer(layer: number): CondensatePocket[] {
+    const affected: CondensatePocket[] = [];
+    const layerHeight = (this.gridBottomY - this.gridTopY) / this.layers;
+
+    for (const p of this.pockets) {
+      if (p.isDepleted || p.discoveryState !== 'concealed') continue;
+      const pocketLayer = Math.floor((p.y - this.gridTopY) / layerHeight);
+      if (pocketLayer === layer) {
+        p.discoveryState = 'hinted';
+        affected.push(p);
+      }
+    }
+    return affected;
+  }
+
+  /**
+   * Spectral scan: full reveal for all pockets within radius (concealed or hinted -> revealed)
+   */
+  public revealPocketsInRadius(worldX: number, worldY: number, radius = 200): CondensatePocket[] {
+    const affected: CondensatePocket[] = [];
+    const r2 = radius * radius;
+    for (const p of this.pockets) {
+      if (p.isDepleted || p.discoveryState === 'revealed') continue;
+      const dx = p.x - worldX;
+      const dy = p.y - worldY;
+      if (dx * dx + dy * dy <= r2) {
+        p.discoveryState = 'revealed';
+        affected.push(p);
+      }
+    }
+    return affected;
+  }
+
+  /**
+   * Directly marks a pocket as revealed
+   */
+  public revealPocket(id: string): CondensatePocket | null {
+    const p = this.getPocketById(id);
+    if (!p) return null;
+    p.discoveryState = 'revealed';
+    return p;
+  }
+
+  /**
+   * Blind drilling check: if drill tip touches concealed or hinted pocket (< threshold px), reveal it!
+   */
+  public checkDrillCollision(probeX: number, probeY: number, threshold = 35): CondensatePocket | null {
+    for (const p of this.pockets) {
+      if (p.isDepleted) continue;
+      const dist = Math.hypot(p.x - probeX, p.y - probeY);
+      if (dist < Math.max(threshold, p.radius + 6)) {
+        if (p.discoveryState !== 'revealed') {
+          p.discoveryState = 'revealed';
+        }
+        return p;
+      }
+    }
+    return null;
   }
 
   /**
@@ -374,5 +489,49 @@ export class CloudGrid {
 
     if (!nearest) return null;
     return { pocket: nearest, distance: minDistance };
+  }
+
+  /**
+   * Returns true if all condensate pockets are depleted or have no extractable volume
+   */
+  public isAllDepleted(): boolean {
+    if (this.pockets.length === 0) return false;
+    return this.pockets.every((p) => p.isDepleted || p.currentVolume <= 0.05);
+  }
+
+  /**
+   * Loads a new cloud band into the grid with fresh concealed pockets
+   */
+  public loadCloudBand(band: CloudBand): void {
+    const xRatio = this.width / WORLD_WIDTH;
+    const yRatio = this.height / WORLD_HEIGHT;
+
+    const sourcePockets = band.actualData?.pockets ?? [];
+    this.pockets = sourcePockets.map((p) => ({
+      ...p,
+      baseX: p.baseX * xRatio,
+      baseY: p.baseY * yRatio,
+      x: p.x * xRatio,
+      y: p.y * yRatio,
+      currentVolume: p.maxCapacity,
+      isDepleted: false,
+      discoveryState: 'concealed',
+      quality: p.quality ?? 2,
+      sizeCategory: p.sizeCategory ?? 'M',
+    }));
+  }
+
+  /**
+   * Horizontally shifts pockets by dx pixels (for platform relocation)
+   */
+  public shiftPockets(dx: number): void {
+    const margin = 30;
+    const span = Math.max(100, this.width - margin * 2);
+    for (const p of this.pockets) {
+      let nx = p.x + dx;
+      nx = margin + ((((nx - margin) % span) + span) % span);
+      p.x = nx;
+      p.baseX = nx;
+    }
   }
 }
