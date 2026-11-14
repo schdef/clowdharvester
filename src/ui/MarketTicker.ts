@@ -1,5 +1,6 @@
 import { t, onLanguageChange } from '../i18n/i18n';
 import { ColorPalette } from '../gfx/ColorPalette';
+import { AudioManager } from '../audio/AudioManager';
 
 export interface CommodityPrice {
   nameKey: string;
@@ -10,6 +11,7 @@ export interface CommodityPrice {
 
 export class MarketTicker {
   private containerElement: HTMLElement | null = null;
+  private isCollapsed = false;
   private prices: CommodityPrice[] = [
     { nameKey: 'zones.resourceHigh', price: 25, change: 1.8, color: ColorPalette.highZone.turquoiseCrystal },
     { nameKey: 'zones.resourceMid', price: 10, change: -0.5, color: ColorPalette.midZone.condensateDrop },
@@ -34,22 +36,67 @@ export class MarketTicker {
     this.render();
   }
 
+  public toggleCollapse(): boolean {
+    this.isCollapsed = !this.isCollapsed;
+    AudioManager.getInstance().playUiClick();
+    this.render();
+    return this.isCollapsed;
+  }
+
   public render(): void {
     if (!this.containerElement) return;
 
+    if (this.isCollapsed) {
+      // Compact collapsed mini-tab
+      this.containerElement.classList.remove('w-80', 'p-4');
+      this.containerElement.classList.add('w-auto', 'p-1.5');
+      this.containerElement.innerHTML = `
+        <button 
+          id="btn-market-expand"
+          class="flex items-center space-x-2 px-2.5 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700/60 text-emerald-400 text-xs font-mono transition shadow-lg cursor-pointer"
+          title="Börsenkurse & Ratsdossier ausklappen"
+        >
+          <span class="text-slate-400">◀</span>
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span class="font-bold">BÖRSE</span>
+          <span class="text-slate-400 text-[10px]">30 Ratsant.</span>
+        </button>
+      `;
+
+      const expandBtn = document.getElementById('btn-market-expand');
+      if (expandBtn) {
+        expandBtn.addEventListener('click', () => this.toggleCollapse());
+      }
+      return;
+    }
+
+    // Full Expanded Floating Overlay
+    this.containerElement.classList.remove('w-auto', 'p-1.5');
+    this.containerElement.classList.add('w-80', 'p-4');
+
     this.containerElement.innerHTML = `
-      <div class="h-full flex flex-col space-y-5 text-slate-300 font-sans select-none">
-        <!-- Header -->
-        <div class="border-b border-slate-800 pb-3">
-          <div class="flex items-center space-x-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-            <h2 class="text-xs font-semibold uppercase tracking-widest text-emerald-400">
-              ${t('market.title')}
-            </h2>
+      <div class="h-full flex flex-col space-y-4 text-slate-300 font-sans select-none">
+        <!-- Header with Collapse Button -->
+        <div class="border-b border-slate-800/80 pb-2.5 flex items-start justify-between">
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+              <h2 class="text-xs font-semibold uppercase tracking-widest text-emerald-400">
+                ${t('market.title')}
+              </h2>
+            </div>
+            <p class="text-xs font-medium text-slate-300 mt-0.5">
+              ${t('market.ticker')} & Kurstrends
+            </p>
           </div>
-          <p class="text-sm font-medium text-slate-200 mt-1">
-            ${t('market.ticker')} & Kurstrends
-          </p>
+
+          <button 
+            id="btn-market-collapse"
+            class="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-slate-700/60 transition text-[11px] cursor-pointer"
+            title="Markt minimieren"
+          >
+            ▶
+          </button>
         </div>
 
         <!-- Commodity Prices -->
@@ -60,7 +107,7 @@ export class MarketTicker {
             const changeSign = isPositive ? '+' : '';
 
             return `
-              <div class="bg-slate-800/50 rounded-xl p-2.5 border border-slate-800 flex items-center justify-between">
+              <div class="bg-slate-800/50 rounded-xl p-2.5 border border-slate-700/60 flex items-center justify-between">
                 <div class="flex items-center space-x-2">
                   <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${c.color}"></span>
                   <span class="text-xs font-medium text-slate-200">${t(c.nameKey)}</span>
@@ -74,12 +121,12 @@ export class MarketTicker {
           }).join('')}
           <div class="flex items-center justify-between px-1 text-[11px] text-amber-400/90">
             <span>${t('market.evaporationRate')}</span>
-            <span class="font-mono text-slate-400">Spekulations-Schutz</span>
+            <span class="font-mono text-slate-400">Schutz vor Hortung</span>
           </div>
         </div>
 
         <!-- Sky-Council Dossier -->
-        <div class="bg-slate-800/40 rounded-xl p-3 border border-slate-800 space-y-3 flex-1 overflow-y-auto">
+        <div class="bg-slate-800/40 rounded-xl p-3 border border-slate-700/60 space-y-2.5 flex-1 overflow-y-auto">
           <div class="flex justify-between items-center">
             <h3 class="text-xs font-semibold uppercase tracking-wider text-amber-400">
               ${t('market.councilDossier')}
@@ -99,30 +146,29 @@ export class MarketTicker {
               <span class="text-slate-300 font-medium">Spieler (Du)</span>
               <span class="font-mono font-bold text-emerald-400">${this.playerShares} / 30</span>
             </div>
-            <!-- Rival 1: Daredevil -->
+            <!-- Draufgänger -->
             <div class="flex items-center justify-between text-xs">
-              <span class="text-slate-400">${t('rivals.daredevil')}</span>
-              <span class="font-mono text-slate-300">${this.daredevilShares}</span>
+              <span class="text-slate-400">Der Draufgänger</span>
+              <span class="font-mono text-slate-300">${this.daredevilShares} / 30</span>
             </div>
-            <!-- Rival 2: Calculator -->
+            <!-- Rechner -->
             <div class="flex items-center justify-between text-xs">
-              <span class="text-slate-400">${t('rivals.calculator')}</span>
-              <span class="font-mono text-slate-300">${this.calculatorShares}</span>
+              <span class="text-slate-400">Der Rechner</span>
+              <span class="font-mono text-slate-300">${this.calculatorShares} / 30</span>
             </div>
-            <!-- Rival 3: Tracker -->
+            <!-- Spürnase -->
             <div class="flex items-center justify-between text-xs">
-              <span class="text-slate-400">${t('rivals.tracker')}</span>
-              <span class="font-mono text-slate-300">${this.trackerShares}</span>
+              <span class="text-slate-400">Die Spürnase</span>
+              <span class="font-mono text-slate-300">${this.trackerShares} / 30</span>
             </div>
           </div>
         </div>
-
-        <!-- Bottom Status -->
-        <div class="pt-2 border-t border-slate-800 text-[11px] text-slate-400 flex justify-between">
-          <span>Hafenstatus:</span>
-          <span class="text-emerald-400 font-mono">Bereit zum Umschlag</span>
-        </div>
       </div>
     `;
+
+    const collapseBtn = document.getElementById('btn-market-collapse');
+    if (collapseBtn) {
+      collapseBtn.addEventListener('click', () => this.toggleCollapse());
+    }
   }
 }

@@ -1,7 +1,7 @@
-# Cloud Harvesters (Turmoil in den Wolken)
+# Cloud Harvesters
 
-> Ein atmosphärisches Himmels-Schürfspiel mit entspannter Echtzeit-Strategie, dynamischer Wolkendrift, elastischem Sonden-Bohrgefühl und strategischem Sky-Council.  
-> Inspiriert vom Spannungsbogen von *Turmoil* und der visuellen Eleganz von *Monument Valley* und *Alto’s Adventure*.
+> An atmospheric sky-mining and aerial logistics game featuring relaxing real-time strategy, dynamic pendulum cloud drift, tactile probe drilling, and high-stakes Sky-Council auctions.  
+> Designed with a cozy, neo-pastel aesthetic inspired by *Monument Valley* and *Alto’s Adventure*.
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](#)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue)](#)
@@ -11,114 +11,119 @@
 
 ---
 
-## ☁️ Spielkonzept
+## ☁️ Game Overview
 
-In *Cloud Harvesters* ersteigerst du Wolkenbänder, senkst deine Schürfsonde durch dichte Wolkenschichten ab, zapfst Kondensattaschen an und baust ein florierendes Logistiknetz aus Kondensatoren, Rohren und Tankballons auf.
+In **Cloud Harvesters**, players bid on floating cloud bands, lower suspension drill probes through misty atmospheric layers, tap into glowing condensate pockets, and build an efficient sky network of condensers, pipes, and floating storage balloons.
 
-- **Keine Hektik, sondern Planung:** Wolken verschwinden nie auf Nimmerwiedersehen – sie pendeln in einem berechenbaren 4-Wochen-Zyklus. Eine 4-Wochen-Windvorhersage ermöglicht vorausschauende Taktik ohne Frust.
-- **Echtes Schürfgefühl:** Die Sonde wird mit Finger oder Maus durch den Nebel gezogen. Jede Schicht bietet fühlbaren Widerstand nach Dichte; die Sonde hinterlässt eine sichtbare Spur im Wolkendichtefeld, die sich langsam heilt.
-- **Zielkonflikt im Sky-Council:** Credits sind nur dann Siegpunkte, wenn du sie in Council-Anteile umwandelst. Wer zu früh Anteile kauft, spart an der Ausrüstung; wer zu spät kauft, wird von den drei KI-Rivalen überboten.
+- **Calm, Foresighted Planning:** Clouds never drift away forever—they follow a predictable 4-week harmonic pendulum cycle. An interactive 4-week wind radar allows players to plan operations without time pressure.
+- **Tactile Aerial Drilling:** Pull the diamond drill head downwards through atmospheric layers using touch or mouse gestures. Density provides dynamic resistance; drilling leaves a visible trail in the fog that heals gradually over one week (60 seconds).
+- **Sky-Council Strategic Balance:** Credits are only victory points when converted into Council shares. Purchasing shares too early leaves fewer funds for infrastructure; waiting too late allows the three autonomous AI rivals to outbid you.
 
-### Die drei Höhenzonen
+### Atmospheric Height Zones
 
-| Zone | Dichte & Widerstand | Drift pro Woche | Ressource | Charakteristik |
+| Zone | Density & Resistance | Weekly Drift | Resource | Characteristics |
 | :--- | :--- | :--- | :--- | :--- |
-| **Hochzone** | Niedrig (schneller Vortrieb) | 3 Felder (Ost) | **Frostkristalle** | Hoher Marktpreis (25 CR), dünne Schichten, erfordert Eisbohrer |
-| **Mittelzone** | Mittel | 2 Felder (West) | **Skywater** | Großes Volumen, verlässliche Basis (10 CR), Nebelfänger |
-| **Tiefzone** | Hoch (zäher Widerstand) | 1 Feld (Ost) | **Sturmladung** | Hohe Preisschwankungen (18 CR), Gewitterrisiko, Ladungsspitze |
+| **High Zone** | Low (Fast advancement) | 3 cols (East) | **Frost Crystals** | High market value (25 CR), thin layers, requires Ice Drill |
+| **Mid Zone** | Medium | 2 cols (West) | **Skywater** | Large volume, reliable foundation (10 CR), requires Fog Catcher |
+| **Low Zone** | High (Dense resistance) | 1 col (East) | **Storm Charge** | High price volatility (18 CR), electric risk, requires Charge Tip |
 
 ---
 
-## 🎨 Stil & Ästhetik (Neo-Pastell)
+## 🎨 Visual Style & Sound Design
 
-- **Monument-Valley-Ästhetik:** Sanfte geometrische Formen, atmosphärische Farbverläufe und handgezeichnet anmutende Schwebemaschinen.
-- **Zonen-Farbwelten:**
-  - *Hochzone:* Gletscher-Dunst (`#E0F4FF`), Eisblau (`#BEE3F8`), Kristalltürkis (`#38B2AC`).
-  - *Mittelzone:* Pastell-Azur (`#93C5FD`), Sanfter Himmel (`#C7D2FE`), Kondensatblau (`#3B82F6`).
-  - *Tiefzone:* Dämmerungsviolett (`#4C1D95`), Sturmindigo (`#5B21B6`), Glimmgold (`#FBBF24`).
-- **Adaptives Audio:** Dynamischer Neoklassik-/Ambient-Soundtrack mit 4 synchronen Web-Audio-Stems (warmes Klavier, sanfte Synthesizer, tiefe Cellobögen bei Tauchgängen, Foley-SFX und Haptik-Vibration beim Schürfen).
-
----
-
-## 📱 Desktop & Mobile (Flexibles Responsive Layout)
-
-- **Mobile (1-Hand-Portrait):** Vollflächiger 9:16 Viewport mit kompaktem Header oben und ergonomischem Daumen-Dock (`ToolBar`) mit 5 Werkzeug-Slots am unteren Displayrand (Touch-Targets >= 48px).
-- **Desktop (Widescreen):** Zentrierter Schnitt mit flankierenden Companion-Panels:
-  - *Links:* 4-Wochen-Windradar, Pendelphasen und Tastatur-Shortcuts.
-  - *Rechts:* Dynamischer Hafen-Börsenticker, Verdunstungsindikator (2%/Woche) und Sky-Council-Dossier mit Rivalen-Profilen.
+- **Neo-Pastel Flat-Art:** Soft geometric forms, atmospheric gradients, and hand-drawn sky machinery.
+- **Zone Color Palettes:**
+  - *High Zone:* Glacier Mist (`#E0F4FF`), Ice Blue (`#BEE3F8`), Crystal Turquoise (`#38B2AC`).
+  - *Mid Zone:* Pastel Azure (`#93C5FD`), Soft Sky (`#C7D2FE`), Condensate Blue (`#3B82F6`).
+  - *Low Zone:* Twilight Violet (`#4C1D95`), Storm Indigo (`#5B21B6`), Glowing Gold (`#FBBF24`).
+- **Cozy & Friendly Audio:** Cheerful, uplifting soundscape with gentle kalimba and marimba plucks, playful bubbling droplets during extraction, soothing wind chimes, and soft tactile clicks.
 
 ---
 
-## 🛠️ Technologie-Stack
+## 📱 Desktop & Mobile Responsive Layout
 
-- **Game Engine:** [Phaser 3](https://phaser.io/) (WebGL 2D mit Canvas-Fallback)
+- **Mobile (1-Hand Portrait):** Ergonomic edge-to-edge view with a compact status header and a 5-slot thumb-dock toolbar (touch targets ≥ 48px).
+- **Desktop (Fullscreen Experience):** The majestic sky spans across the entire screen, accompanied by sleek, semi-transparent floating glassmorphism companion panels:
+  - *Left Panel:* 4-week wind radar, pendulum drift phases, and keyboard hotkeys.
+  - *Right Panel:* Live harbor commodity exchange, evaporation rate tracker (2%/week), and Sky-Council dossier with AI rival profiles.
+- **Built-in Interactive Tutorial:** Features **Balo 🎈**, the friendly weather balloon advisor, offering step-by-step guidance on drilling, drill head switching, harvesting, and sonar scans.
+
+---
+
+## 🛠️ Technology Stack
+
+- **Game Engine:** [Phaser 3](https://phaser.io/) (WebGL 2D with Canvas fallback)
 - **Framework & Bundler:** [Vite](https://vitejs.dev/) + [TypeScript 5](https://www.typescriptlang.org/)
-- **UI & Styling:** [Tailwind CSS](https://tailwindcss.com/) (strikte Dark-Mode-Konformität)
-- **Sound & Haptik:** Native Web Audio API + HTML5 Vibration API
-- **Deployment:** Progressive Web App ([vite-plugin-pwa](https://vite-pwa-org.netlify.app/)) & [Capacitor](https://capacitorjs.com/) für Android & iOS
-- **Lokalisierung:** Vollständiges i18n-System (Deutsch / Englisch mit Sofort-Umschaltung)
+- **UI & Styling:** [Tailwind CSS](https://tailwindcss.com/) (strict dark mode compliance)
+- **Audio & Haptics:** Native Web Audio API + HTML5 Vibration API
+- **Cross-Platform & Offline:** Progressive Web App ([vite-plugin-pwa](https://vite-pwa-org.netlify.app/)) & [Capacitor](https://capacitorjs.com/) for Android and iOS
+- **Localization:** Bilingual i18n support (English & German with instant toggle)
 
 ---
 
-## 🚀 Schnellstart
+## 🚀 Quick Start
 
-### Voraussetzungen
-- [Node.js](https://nodejs.org/) (v18 oder höher empfohlen)
+### Prerequisites
+- [Node.js](https://nodejs.org/) (v18 or higher recommended)
 - `npm`
 
-### Installation & Start
+### Installation & Development
 ```bash
-# Repository klonen
+# Clone the repository
 git clone git@github.com:schdef/clowdharvester.git
 cd clowdharvester
 
-# Abhängigkeiten installieren
+# Install dependencies
 npm install
 
-# Entwicklungsserver starten
+# Run verification test suites (Phase 1, Phase 3, UX, Audio & Tutorial)
+npm test
+
+# Start local development server
 npm run dev
 ```
-Der Entwicklungsserver startet unter `http://localhost:5173`.
+Open `http://localhost:5173` in your browser.
 
-### Produktions-Build
+### Production Build & Preview
 ```bash
-# TypeScript-Prüfung und Vite-Build
+# Run type checks and build PWA bundle
 npm run build
 
-# Gebaute PWA lokal testen
+# Preview production build locally
 npm run preview
 ```
 
 ---
 
-## 🎮 Steuerung & Hotkeys
+## 🎮 Controls & Shortcuts
 
-| Aktion | Geste / Touch | Tastatur (Desktop) |
+| Action | Touch / Gesture | Desktop Keyboard |
 | :--- | :--- | :--- |
-| **Sonde absenken / steuern** | Ziehen mit Finger | Ziehen mit linker Maustaste |
-| **Werkzeug 1: Windfühler-Scan** | Tippen auf Slot 1 | Taste `1` |
-| **Werkzeug 2: Bohrkopf-Tool** | Tippen auf Slot 2 | Taste `2` |
-| **Bohrkopf wechseln (Eis / Nebel / Ladung)** | Tippen auf Kopf-Pills | `Q` (Eis), `W` (Nebel), `E` (Ladung) oder Slot 2 wiederholt |
-| **Werkzeug 3: Rohrleitungen** | Tippen auf Slot 3 | Taste `3` |
-| **Werkzeug 4: Tankballons** | Tippen auf Slot 4 | Taste `4` |
-| **Werkzeug 5: Hafen / Verkauf** | Tippen auf Slot 5 | Taste `5` |
-| **Pause / Weiterspielen** | Großer Pause-Button | `Leertaste` |
-| **Spieltempo** | Header-Tempo-Buttons | `0.5x`, `1x`, `2x` |
-| **Sprache umschalten** | Header `DE` / `EN` | Klick auf Sprach-Icon |
+| **Lower / Steer Probe** | Drag with finger | Click and drag with mouse |
+| **Tool 1: Wind Sensor Scan** | Tap Slot 1 | Key `1` |
+| **Tool 2: Drill Head Tool** | Tap Slot 2 | Key `2` |
+| **Switch Drill Head (Ice / Fog / Charge)** | Tap head pills | Keys `Q` (Ice), `W` (Fog), `E` (Charge) |
+| **Tool 3: Pipelines** | Tap Slot 3 | Key `3` |
+| **Tool 4: Storage Tanks** | Tap Slot 4 | Key `4` |
+| **Tool 5: Harbor / Exchange** | Tap Slot 5 | Key `5` |
+| **Pause / Resume** | Big Pause button | `Spacebar` |
+| **Game Speed** | Header speed buttons | `0.5x`, `1x`, `2x` |
+| **Interactive Tutorial / Help** | Tap `🎈 Help` button | Tap `🎈` in header |
+| **Switch Language** | Header `EN` / `DE` button | Click language icon |
 
 ---
 
-## 🗺️ Roadmap & Meilensteine
+## 🗺️ Roadmap & Milestones
 
-- [x] **Phase 0:** Projekt-Setup, Build-Pipeline, Design-Tokens & Responsive Shell (PWA & Desktop Sidebars)
-- [x] **Phase 1 (P1):** Sonde, Schichtwiderstand, Wolkenschneiden & elastisches Kondensattaschen-Docking
-- [ ] **Phase 2 (P2):** Logistik-Netzwerk (Kondensator, Rohre, Tankballons), Hafenmarkt & Verdunstung
-- [ ] **Phase 3 (P3):** Wolkenband-Auktion vor Saisonstart, 3 KI-Rivalen (Draufgänger, Rechner, Spürnase)
-- [ ] **Phase 4 (P4):** Sky-Council Sitzungen (Woche 4, 8, 12), 12-Wochen-Saisonloop & Kampagne (3 Regionen)
-- [ ] **Phase 5:** PWA Offline-Tuning, Capacitor Android/iOS Builds & finaler Sound-Mix
+- [x] **Phase 0:** Project setup, build pipeline, design tokens & responsive shell (PWA & companion sidebars)
+- [x] **Phase 1 (P1):** Interactive probe, layer resistance, cloud fog carving & elastic pocket docking
+- [ ] **Phase 2 (P2):** Logistics network (condensers, pipes, storage balloons), harbor economy & evaporation
+- [x] **Phase 3 (P3):** Cloud band pre-season auction & 3 AI rivals (The Daredevil, The Calculator, The Tracker)
+- [ ] **Phase 4 (P4):** Sky-Council sessions (Weeks 4, 8, 12), 12-week season loop & campaign (3 regions)
+- [ ] **Phase 5:** PWA offline tuning, Capacitor native Android/iOS packaging & final sound mix
 
 ---
 
-## 📄 Lizenz
+## 📄 License
 
-Dieses Projekt ist unter der [MIT-Lizenz](LICENSE) lizenziert.
+This project is licensed under the [MIT License](LICENSE).

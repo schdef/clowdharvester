@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { ColorPalette } from '../gfx/ColorPalette';
 import { generateCloudTexture } from '../gfx/CloudShader';
+import { GameState } from '../core/GameState';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -48,10 +49,15 @@ export class BootScene extends Phaser.Scene {
   }
 
   public create(): void {
-    // Fade out and transition smoothly to SkyHarvestScene
+    // Fade out and transition smoothly to AuctionScene (or SkyHarvestScene if band already active)
     this.cameras.main.fadeOut(400, 15, 23, 42);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-      this.scene.start('SkyHarvestScene');
+      const activeBand = GameState.getInstance().getActiveCloudBand();
+      if (activeBand) {
+        this.scene.start('SkyHarvestScene');
+      } else {
+        this.scene.start('AuctionScene');
+      }
     });
   }
 
@@ -310,6 +316,274 @@ export class BootScene extends Phaser.Scene {
         ctx.arc(8, 8, 2, 0, Math.PI * 2);
         ctx.fill();
         sparkCanvas.refresh();
+      }
+    }
+
+    // 8. Neo-Pastell AI Rival & Player Avatars
+    this.generateAvatars();
+  }
+
+  private generateAvatars(): void {
+    // 8a. Der Draufgänger ('avatar-daredevil') - Coral & Brass Aviator
+    if (!this.textures.exists('avatar-daredevil')) {
+      const canvas = this.textures.createCanvas('avatar-daredevil', 72, 72);
+      if (canvas) {
+        const ctx = canvas.getContext();
+        // Background Circle
+        ctx.fillStyle = '#1E293B';
+        ctx.beginPath();
+        ctx.arc(36, 36, 34, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#F87171'; // Coral Red border
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Aviator Cap / Helmet
+        ctx.fillStyle = '#991B1B';
+        ctx.beginPath();
+        ctx.arc(36, 32, 22, Math.PI, 0, false);
+        ctx.fill();
+
+        // Goggles
+        ctx.fillStyle = '#F59E0B'; // Brass
+        ctx.beginPath();
+        ctx.arc(27, 30, 8, 0, Math.PI * 2);
+        ctx.arc(45, 30, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#67E8F9'; // Cyan lenses
+        ctx.beginPath();
+        ctx.arc(27, 30, 5, 0, Math.PI * 2);
+        ctx.arc(45, 30, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Face & Cocky Smirk
+        ctx.fillStyle = '#FDE68A';
+        ctx.beginPath();
+        ctx.arc(36, 42, 14, 0, Math.PI);
+        ctx.fill();
+
+        ctx.strokeStyle = '#B45309';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(38, 44, 6, 0.2, Math.PI * 0.85);
+        ctx.stroke();
+
+        canvas.refresh();
+      }
+    }
+
+    // 8b. Der Rechner ('avatar-calculator') - Azure Geometric Monocle
+    if (!this.textures.exists('avatar-calculator')) {
+      const canvas = this.textures.createCanvas('avatar-calculator', 72, 72);
+      if (canvas) {
+        const ctx = canvas.getContext();
+        // Background Circle
+        ctx.fillStyle = '#0F172A';
+        ctx.beginPath();
+        ctx.arc(36, 36, 34, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#38BDF8'; // Azure Cyan border
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Sleek Head & Hair
+        ctx.fillStyle = '#334155';
+        ctx.beginPath();
+        ctx.arc(36, 30, 20, Math.PI, 0, false);
+        ctx.fill();
+
+        // Face
+        ctx.fillStyle = '#E2E8F0';
+        ctx.beginPath();
+        ctx.arc(36, 38, 15, 0, Math.PI);
+        ctx.fill();
+
+        // Monocle / HUD Visor on Right Eye
+        ctx.strokeStyle = '#06B6D4';
+        ctx.lineWidth = 2.5;
+        ctx.fillStyle = 'rgba(6, 182, 212, 0.35)';
+        ctx.beginPath();
+        ctx.arc(44, 34, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Analytical Eyes & Straight stoic mouth
+        ctx.fillStyle = '#0F172A';
+        ctx.beginPath();
+        ctx.arc(28, 34, 2, 0, Math.PI * 2);
+        ctx.arc(44, 34, 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(31, 46);
+        ctx.lineTo(41, 46);
+        ctx.stroke();
+
+        canvas.refresh();
+      }
+    }
+
+    // 8c. Die Spürnase ('avatar-tracker') - Violet & Aurora Radar Sensor
+    if (!this.textures.exists('avatar-tracker')) {
+      const canvas = this.textures.createCanvas('avatar-tracker', 72, 72);
+      if (canvas) {
+        const ctx = canvas.getContext();
+        // Background Circle
+        ctx.fillStyle = '#1E1B4B';
+        ctx.beginPath();
+        ctx.arc(36, 36, 34, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#F472B6'; // Aurora Pink border
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Sensor Antenna / Crest
+        ctx.strokeStyle = '#FBBF24';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(36, 14);
+        ctx.lineTo(36, 6);
+        ctx.arc(36, 5, 3, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Hood & Head
+        ctx.fillStyle = '#5B21B6';
+        ctx.beginPath();
+        ctx.arc(36, 32, 21, Math.PI, 0, false);
+        ctx.fill();
+
+        // Face
+        ctx.fillStyle = '#FED7AA';
+        ctx.beginPath();
+        ctx.arc(36, 38, 14, 0, Math.PI);
+        ctx.fill();
+
+        // Sensor Visor / Goggles
+        ctx.fillStyle = '#F472B6';
+        ctx.beginPath();
+        ctx.roundRect(22, 28, 28, 10, 4);
+        ctx.fill();
+        ctx.fillStyle = '#FEF08A';
+        ctx.beginPath();
+        ctx.arc(28, 33, 2.5, 0, Math.PI * 2);
+        ctx.arc(44, 33, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Inquisitive Smile
+        ctx.strokeStyle = '#9333EA';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(36, 43, 4, 0.1, Math.PI * 0.9);
+        ctx.stroke();
+
+        canvas.refresh();
+      }
+    }
+
+    // 8d. Player ('avatar-player') - Navigator Brass Cap
+    if (!this.textures.exists('avatar-player')) {
+      const canvas = this.textures.createCanvas('avatar-player', 72, 72);
+      if (canvas) {
+        const ctx = canvas.getContext();
+        // Background Circle
+        ctx.fillStyle = '#0F172A';
+        ctx.beginPath();
+        ctx.arc(36, 36, 34, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#F59E0B'; // Brass border
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Captain Visor
+        ctx.fillStyle = '#1E293B';
+        ctx.beginPath();
+        ctx.arc(36, 30, 20, Math.PI, 0, false);
+        ctx.fill();
+        ctx.fillStyle = '#F59E0B';
+        ctx.beginPath();
+        ctx.roundRect(20, 27, 32, 6, 2);
+        ctx.fill();
+
+        // Face
+        ctx.fillStyle = '#FDE68A';
+        ctx.beginPath();
+        ctx.arc(36, 38, 14, 0, Math.PI);
+        ctx.fill();
+
+        // Determined Eyes & Mouth
+        ctx.fillStyle = '#0F172A';
+        ctx.beginPath();
+        ctx.arc(30, 35, 2, 0, Math.PI * 2);
+        ctx.arc(42, 35, 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#D97706';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(36, 44, 5, 0.1, Math.PI * 0.9);
+        ctx.stroke();
+
+        canvas.refresh();
+      }
+    }
+
+    // 8e. Balo 🎈 ('avatar-balo') - Cheerful Weather Balloon Advisor
+    if (!this.textures.exists('avatar-balo')) {
+      const canvas = this.textures.createCanvas('avatar-balo', 72, 72);
+      if (canvas) {
+        const ctx = canvas.getContext();
+        // Warm peach balloon circle
+        ctx.fillStyle = '#FB923C';
+        ctx.beginPath();
+        ctx.arc(36, 36, 32, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#FDBA74';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        // Goggles
+        ctx.fillStyle = '#78350F';
+        ctx.fillRect(10, 20, 52, 4);
+        ctx.fillStyle = '#F59E0B';
+        ctx.beginPath();
+        ctx.arc(26, 22, 8, 0, Math.PI * 2);
+        ctx.arc(46, 22, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#38BDF8';
+        ctx.beginPath();
+        ctx.arc(26, 22, 5, 0, Math.PI * 2);
+        ctx.arc(46, 22, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Big kawaii eyes
+        ctx.fillStyle = '#0F172A';
+        ctx.beginPath();
+        ctx.arc(28, 40, 3.5, 0, Math.PI * 2);
+        ctx.arc(44, 40, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(27, 39, 1.5, 0, Math.PI * 2);
+        ctx.arc(43, 39, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Rosy cheeks
+        ctx.fillStyle = '#FDA4AF';
+        ctx.beginPath();
+        ctx.arc(20, 46, 4, 0, Math.PI * 2);
+        ctx.arc(52, 46, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Happy smile
+        ctx.strokeStyle = '#0F172A';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(36, 45, 5, 0.1, Math.PI * 0.9);
+        ctx.stroke();
+
+        canvas.refresh();
       }
     }
   }

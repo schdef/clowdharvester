@@ -1,13 +1,16 @@
 import './style.css';
 import Phaser from 'phaser';
 import { BootScene } from './scenes/BootScene';
+import { AuctionScene } from './scenes/AuctionScene';
 import { SkyHarvestScene } from './scenes/SkyHarvestScene';
 import { ResponsiveLayout } from './ui/ResponsiveLayout';
 import { ToolBar } from './ui/ToolBar';
 import { DesktopRadar } from './ui/DesktopRadar';
 import { MarketTicker } from './ui/MarketTicker';
+import { TutorialModal } from './ui/TutorialModal';
 import { AudioManager } from './audio/AudioManager';
 import { getLanguage, setLanguage, t, onLanguageChange } from './i18n/i18n';
+import { GameState } from './core/GameState';
 import { registerSW } from 'virtual:pwa-register';
 
 // Register PWA Service Worker for offline capabilities
@@ -23,10 +26,9 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// Global Game State placeholders for Phase 0 Shell
+// Global Game State placeholders
 let currentSeason = 1;
 let currentWeek = 1;
-let currentCredits = 250;
 let currentSpeedIndex = 1;
 const speedOptions = ['0.5x', '1.0x', '2.0x', 'PAUSE'];
 
@@ -35,6 +37,7 @@ const responsive = ResponsiveLayout.getInstance();
 const toolBar = new ToolBar();
 const desktopRadar = new DesktopRadar();
 const marketTicker = new MarketTicker();
+const tutorialModal = TutorialModal.getInstance();
 
 // Mount UI Shell Components
 function initUI(): void {
@@ -52,6 +55,20 @@ function initUI(): void {
   const mobileDock = document.getElementById('mobile-thumb-dock');
   if (mobileDock) {
     toolBar.mount(mobileDock);
+  }
+
+  const tutorialContainer = document.getElementById('tutorial-container');
+  if (tutorialContainer) {
+    tutorialModal.mount(tutorialContainer);
+    tutorialModal.checkAutoOpen();
+  }
+
+  // Setup Tutorial Button
+  const tutorialBtn = document.getElementById('btn-tutorial-toggle');
+  if (tutorialBtn) {
+    tutorialBtn.addEventListener('click', () => {
+      tutorialModal.open(1);
+    });
   }
 
   // Setup Header Buttons
@@ -90,27 +107,32 @@ function initUI(): void {
     const seasonEl = document.getElementById('header-season-label');
     const weekEl = document.getElementById('header-week-label');
     const creditsEl = document.getElementById('header-credits');
+    const auctionLabelEl = document.getElementById('header-auction-label');
+    const helpLabelEl = document.getElementById('header-help-label');
+
     if (seasonEl) seasonEl.textContent = `${t('header.season')} ${currentSeason}`;
     if (weekEl) weekEl.textContent = `${t('header.week')} ${currentWeek}`;
-    if (creditsEl) creditsEl.textContent = currentCredits.toString();
+    if (creditsEl) creditsEl.textContent = GameState.getInstance().getData().credits.toString();
+    if (auctionLabelEl) auctionLabelEl.textContent = t('header.auction').toUpperCase();
+    if (helpLabelEl) helpLabelEl.textContent = t('header.help');
   };
 
   onLanguageChange(updateHeaderLabels);
   updateHeaderLabels();
 }
 
-// Phaser 3 Game Configuration
+// Phaser 3 Full-Screen Game Configuration
 const phaserConfig: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   parent: 'phaser-game',
-  width: 540,
-  height: 960,
   backgroundColor: '#0F172A',
   scale: {
-    mode: Phaser.Scale.FIT,
+    mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.CENTER_BOTH,
+    width: '100%',
+    height: '100%',
   },
-  scene: [BootScene, SkyHarvestScene],
+  scene: [BootScene, AuctionScene, SkyHarvestScene],
   render: {
     antialias: true,
     pixelArt: false,
@@ -122,6 +144,16 @@ const phaserConfig: Phaser.Types.Core.GameConfig = {
 document.addEventListener('DOMContentLoaded', () => {
   initUI();
   const game = new Phaser.Game(phaserConfig);
+
+  // Setup Auction Button to open/restart Auction Scene
+  const auctionBtn = document.getElementById('btn-auction-toggle');
+  if (auctionBtn) {
+    auctionBtn.addEventListener('click', () => {
+      AudioManager.getInstance().playUiClick();
+      game.scene.stop('SkyHarvestScene');
+      game.scene.start('AuctionScene');
+    });
+  }
 
   // Forward Toolbar and Drill Head events to Phaser game & active scene
   toolBar.onToolChange((tool) => {

@@ -2,6 +2,8 @@
  * Cloud Harvesters - StemMixer
  * Manages 4 multi-stems with smooth crossfades and low-pass filtering.
  * Features built-in procedural Web Audio synthesizers as zero-asset fallbacks.
+ * Designed with a warm, cheerful, soothing soundtrack aesthetic
+ * inspired by Animal Crossing, Townscaper, and Monument Valley.
  */
 
 export type StemId = 'ambient' | 'melody' | 'depth' | 'tension';
@@ -13,6 +15,7 @@ export class StemMixer {
   private filterNode: BiquadFilterNode | null = null;
   private isSynthesizing = false;
   private synthInterval: number | null = null;
+  private chimeInterval: number | null = null;
   private isMuted = false;
 
   constructor() {
@@ -37,7 +40,7 @@ export class StemMixer {
     stems.forEach((stem) => {
       if (!this.ctx || !this.masterGain) return;
       const gain = this.ctx.createGain();
-      gain.gain.setValueAtTime(stem === 'ambient' ? 0.6 : 0, this.ctx.currentTime);
+      gain.gain.setValueAtTime(stem === 'ambient' ? 0.55 : 0, this.ctx.currentTime);
       gain.connect(this.masterGain);
       this.stemGains.set(stem, gain);
     });
@@ -64,8 +67,8 @@ export class StemMixer {
    */
   public setDepthFilter(depthRatio: number): void {
     if (!this.ctx || !this.filterNode) return;
-    // 20000 Hz at surface down to 600 Hz at deep zone
-    const freq = 20000 - Math.min(1, Math.max(0, depthRatio)) * 19400;
+    // 20000 Hz at surface down to 750 Hz at deep zone
+    const freq = 20000 - Math.min(1, Math.max(0, depthRatio)) * 19250;
     this.filterNode.frequency.setTargetAtTime(freq, this.ctx.currentTime, 0.2);
   }
 
@@ -83,68 +86,124 @@ export class StemMixer {
   }
 
   /**
-   * Procedural ambient sound generator using Web Audio oscillators & noise buffer
-   * Creates a delicate Neo-Classical / Monument Valley style soundscape
+   * Procedural ambient sound generator using Web Audio oscillators & envelopes.
+   * Creates a warm, cheerful, peaceful neo-classical sky ambiance
+   * with soothing pads, friendly marimba arpeggios, and wind-chime sparkles.
    */
   private startProceduralAmbient(): void {
     if (!this.ctx || this.isSynthesizing) return;
     this.isSynthesizing = true;
 
-    // Stem A: Gentle Wind / Pad Drone
+    // Stem A: Warm, Cozy Cloud Pad (D maj9 harmony: D3, A3, F#4, C#5)
     const ambientGain = this.stemGains.get('ambient');
     if (ambientGain) {
-      const osc1 = this.ctx.createOscillator();
-      const osc2 = this.ctx.createOscillator();
-      const padGain = this.ctx.createGain();
-      padGain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+      const padFrequencies = [146.83, 220.00, 369.99, 554.37]; // D3, A3, F#4, C#5
+      padFrequencies.forEach((freq, idx) => {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const padFilter = this.ctx.createBiquadFilter();
+        const gain = this.ctx.createGain();
 
-      osc1.type = 'sine';
-      osc1.frequency.setValueAtTime(146.83, this.ctx.currentTime); // D3
-      osc2.type = 'triangle';
-      osc2.frequency.setValueAtTime(220.0, this.ctx.currentTime);  // A3
+        osc.type = idx % 2 === 0 ? 'sine' : 'triangle';
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
 
-      osc1.connect(padGain);
-      osc2.connect(padGain);
-      padGain.connect(ambientGain);
+        padFilter.type = 'lowpass';
+        padFilter.frequency.setValueAtTime(800, this.ctx.currentTime);
 
-      osc1.start();
-      osc2.start();
+        // Very gentle warm bed
+        gain.gain.setValueAtTime(0.045 / padFrequencies.length, this.ctx.currentTime);
+
+        osc.connect(padFilter);
+        padFilter.connect(gain);
+        gain.connect(ambientGain);
+        osc.start();
+      });
     }
 
-    // Stem B: Minimalist Piano / Chime notes (D maj / F# min pentatonic)
-    const notes = [293.66, 329.63, 369.99, 440.0, 554.37, 587.33]; // D4, E4, F#4, A4, C#5, D5
-    let noteIdx = 0;
+    // Stem B: Friendly, Relaxing Marimba & Kalimba Melody (D Major Pentatonic Motifs)
+    // Motifs designed for a cozy, peaceful Animal Crossing / Townscaper atmosphere
+    const motifs = [
+      [293.66, 369.99, 440.00, 587.33], // D4, F#4, A4, D5 (Ascending sunrise)
+      [440.00, 369.99, 329.63, 293.66], // A4, F#4, E4, D4 (Gentle float down)
+      [369.99, 493.88, 587.33, 739.99], // F#4, B4, D5, F#5 (Bright sky breeze)
+      [587.33, 440.00, 493.88, 369.99], // D5, A4, B4, F#4 (Playful hop)
+    ];
+
+    let motifIdx = 0;
     this.synthInterval = window.setInterval(() => {
       if (!this.ctx || this.isMuted) return;
       const melodyGain = this.stemGains.get('melody');
       if (!melodyGain || melodyGain.gain.value <= 0.05) return;
 
-      const freq = notes[noteIdx % notes.length];
-      noteIdx = (noteIdx + 1) % notes.length;
+      const motif = motifs[motifIdx % motifs.length];
+      motifIdx++;
 
+      // Play each note of the motif gently separated by 240ms
+      motif.forEach((noteFreq, notePos) => {
+        if (!this.ctx) return;
+        const noteTime = this.ctx.currentTime + notePos * 0.24;
+
+        const osc = this.ctx.createOscillator();
+        const env = this.ctx.createGain();
+        const filter = this.ctx.createBiquadFilter();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(noteFreq, noteTime);
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(2400, noteTime);
+
+        // Marimba-like percussive gentle envelope
+        env.gain.setValueAtTime(0.0001, noteTime);
+        env.gain.linearRampToValueAtTime(0.07, noteTime + 0.012);
+        env.gain.exponentialRampToValueAtTime(0.0001, noteTime + 1.4);
+
+        osc.connect(filter);
+        filter.connect(env);
+        env.connect(melodyGain);
+
+        osc.start(noteTime);
+        osc.stop(noteTime + 1.45);
+      });
+    }, 3600);
+
+    // Stem C: Periodic Wind-Chime Sparkle (Zarte Windspiel-Glocken)
+    const chimeFrequencies = [1174.66, 1318.51, 1479.98, 1760.00, 2217.46]; // D6, E6, F#6, A6, C#7
+    this.chimeInterval = window.setInterval(() => {
+      if (!this.ctx || this.isMuted) return;
+      const ambientGain = this.stemGains.get('ambient');
+      if (!ambientGain || ambientGain.gain.value <= 0.05) return;
+
+      // Random high chime note
+      const chimeFreq = chimeFrequencies[Math.floor(Math.random() * chimeFrequencies.length)];
       const now = this.ctx.currentTime;
-      const noteOsc = this.ctx.createOscillator();
-      const noteEnv = this.ctx.createGain();
 
-      noteOsc.type = 'sine';
-      noteOsc.frequency.setValueAtTime(freq, now);
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
 
-      noteEnv.gain.setValueAtTime(0.001, now);
-      noteEnv.gain.exponentialRampToValueAtTime(0.15, now + 0.05);
-      noteEnv.gain.exponentialRampToValueAtTime(0.0001, now + 2.2);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(chimeFreq, now);
 
-      noteOsc.connect(noteEnv);
-      noteEnv.connect(melodyGain);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(0.025, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.0);
 
-      noteOsc.start(now);
-      noteOsc.stop(now + 2.3);
-    }, 2800);
+      osc.connect(gain);
+      gain.connect(ambientGain);
+
+      osc.start(now);
+      osc.stop(now + 2.1);
+    }, 5400);
   }
 
   public destroy(): void {
     if (this.synthInterval) {
       clearInterval(this.synthInterval);
       this.synthInterval = null;
+    }
+    if (this.chimeInterval) {
+      clearInterval(this.chimeInterval);
+      this.chimeInterval = null;
     }
     this.stemGains.clear();
   }

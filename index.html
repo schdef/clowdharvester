@@ -10,101 +10,123 @@
     <title>Cloud Harvesters</title>
   </head>
   <body class="bg-slate-950 text-slate-200 h-[100dvh] w-full overflow-hidden select-none">
-    <div id="app" class="relative w-full h-[100dvh] flex flex-col lg:flex-row overflow-hidden">
+    <div id="app" class="relative w-full h-[100dvh] overflow-hidden">
       
-      <!-- DESKTOP LEFT SIDEBAR (Widescreen >= 1024px) -->
+      <!-- FULLSCREEN PHASER CANVAS (Z-0: Expands dynamically to 100% width & 100% height) -->
+      <div id="game-container" class="absolute inset-0 w-full h-full overflow-hidden z-0">
+        <div id="phaser-game" class="w-full h-full"></div>
+      </div>
+
+      <!-- TOP STATUS HEADER (Floating Glassmorphism, Z-30) -->
+      <header id="status-header" class="absolute top-0 left-0 right-0 z-30 shrink-0 bg-slate-900/80 backdrop-blur-md border-b border-slate-800/80 px-3 py-2 flex items-center justify-between text-xs font-mono">
+        <!-- Left: Logo & Week / Season -->
+        <div class="flex items-center space-x-2 sm:space-x-3">
+          <span class="font-bold text-sky-200 tracking-wider flex items-center space-x-1.5">
+            <span class="text-amber-400">☁</span>
+            <span class="hidden xs:inline">CLOUD HARVESTERS</span>
+          </span>
+          <div class="flex items-center space-x-1.5 px-2 py-0.5 rounded bg-slate-800/90 text-slate-300 border border-slate-700/60">
+            <span id="header-season-label">Saison 1</span>
+            <span class="text-slate-500">•</span>
+            <span id="header-week-label" class="text-amber-400 font-bold">Woche 1</span>
+          </div>
+        </div>
+
+        <!-- Center: Credits & Harvester Storage -->
+        <div class="flex items-center space-x-2 sm:space-x-3">
+          <div class="flex items-center space-x-1 text-emerald-400 font-semibold px-2 py-0.5 rounded bg-emerald-950/70 border border-emerald-800/50">
+            <span>CR</span>
+            <span id="header-credits">1000</span>
+          </div>
+          <div class="hidden sm:flex items-center space-x-1 text-sky-300 px-2 py-0.5 rounded bg-sky-950/70 border border-sky-800/50">
+            <span>TANK</span>
+            <span id="header-tank">0 / 100</span>
+          </div>
+        </div>
+
+        <!-- Right: Controls (Tutorial, Auction, Language, Audio, Speed) -->
+        <div class="flex items-center space-x-1.5 sm:space-x-2">
+          <!-- Tutorial Advisor Trigger (Balo 🎈) -->
+          <button 
+            id="btn-tutorial-toggle" 
+            class="px-2.5 py-1 rounded bg-sky-950/80 hover:bg-sky-900 text-sky-300 border border-sky-700/60 transition text-[11px] font-semibold cursor-pointer flex items-center space-x-1 shadow-sm"
+            title="Flugschule & Tutorial mit Balo"
+          >
+            <span>🎈</span>
+            <span id="header-help-label" class="hidden sm:inline">HILFE</span>
+          </button>
+
+          <!-- Auction Scene Trigger -->
+          <button 
+            id="btn-auction-toggle" 
+            class="px-2.5 py-1 rounded bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-700/60 transition text-[11px] font-semibold cursor-pointer flex items-center space-x-1 shadow-sm"
+            title="Wolkenband-Auktion"
+          >
+            <span>🔨</span>
+            <span id="header-auction-label">AUKTION</span>
+          </button>
+
+          <!-- Language Switcher -->
+          <button 
+            id="btn-lang-toggle" 
+            class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition text-[11px] font-semibold cursor-pointer"
+            title="Sprache wechseln / Toggle Language"
+          >
+            DE
+          </button>
+
+          <!-- Audio Mute Toggle -->
+          <button 
+            id="btn-audio-toggle" 
+            class="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition cursor-pointer"
+            title="Audio an/aus"
+          >
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            </svg>
+          </button>
+
+          <!-- Speed Toggle -->
+          <button 
+            id="btn-speed-toggle" 
+            class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 font-mono transition text-[11px] cursor-pointer"
+            title="Simulations-Geschwindigkeit"
+          >
+            1.0x
+          </button>
+        </div>
+      </header>
+
+      <!-- FLOATING DESKTOP LEFT OVERLAY: Radar & Wind (Z-20, Collapsible) -->
       <aside 
         id="desktop-left-sidebar" 
-        class="hidden lg:flex flex-col w-80 shrink-0 border-r border-slate-800 bg-slate-900/90 backdrop-blur-md p-4 z-20 overflow-y-auto"
+        class="hidden lg:flex flex-col w-80 max-h-[calc(100vh-8.5rem)] absolute top-14 left-4 z-20 backdrop-blur-md bg-slate-900/75 border border-slate-700/60 rounded-2xl shadow-2xl p-4 overflow-y-auto transition-all duration-300 pointer-events-auto"
         aria-label="Radar und Wetterbericht"
       >
         <!-- Mounted by DesktopRadar -->
       </aside>
 
-      <!-- CENTRAL GAME AREA -->
-      <main class="relative flex-1 flex flex-col h-full overflow-hidden items-center justify-between">
-        
-        <!-- TOP STATUS HEADER (Mobile & Desktop) -->
-        <header id="status-header" class="w-full z-30 shrink-0 bg-slate-900/80 backdrop-blur-md border-b border-slate-800/80 px-3 py-2 flex items-center justify-between text-xs font-mono">
-          <!-- Left: Week & Season -->
-          <div class="flex items-center space-x-3">
-            <span class="font-bold text-sky-200 tracking-wider">CLOUD HARVESTERS</span>
-            <div class="flex items-center space-x-1.5 px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700/60">
-              <span id="header-season-label">Saison 1</span>
-              <span class="text-slate-500">•</span>
-              <span id="header-week-label" class="text-amber-400 font-bold">Woche 1</span>
-            </div>
-          </div>
-
-          <!-- Center: Credits & Harvester Storage -->
-          <div class="flex items-center space-x-3">
-            <div class="flex items-center space-x-1 text-emerald-400 font-semibold px-2 py-0.5 rounded bg-emerald-950/60 border border-emerald-800/40">
-              <span>CR</span>
-              <span id="header-credits">250</span>
-            </div>
-            <div class="hidden sm:flex items-center space-x-1 text-sky-300 px-2 py-0.5 rounded bg-sky-950/60 border border-sky-800/40">
-              <span>TANK</span>
-              <span id="header-tank">0 / 100</span>
-            </div>
-          </div>
-
-          <!-- Right: Controls (Audio, Language, Speed) -->
-          <div class="flex items-center space-x-2">
-            <!-- Language Switcher -->
-            <button 
-              id="btn-lang-toggle" 
-              class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition text-[11px] font-semibold cursor-pointer"
-              title="Sprache wechseln / Toggle Language"
-            >
-              DE
-            </button>
-
-            <!-- Audio Mute Toggle -->
-            <button 
-              id="btn-audio-toggle" 
-              class="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition cursor-pointer"
-              title="Audio an/aus"
-            >
-              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-              </svg>
-            </button>
-
-            <!-- Speed Toggle -->
-            <button 
-              id="btn-speed-toggle" 
-              class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 font-mono transition text-[11px] cursor-pointer"
-              title="Simulations-Geschwindigkeit"
-            >
-              1.0x
-            </button>
-          </div>
-        </header>
-
-        <!-- PHASER CANVAS CONTAINER -->
-        <div id="game-container" class="relative flex-1 w-full h-full flex items-center justify-center overflow-hidden">
-          <div id="phaser-game" class="w-full h-full flex items-center justify-center"></div>
-        </div>
-
-        <!-- BOTTOM TOOLBAR DOCK (Accessible on both Mobile & Desktop) -->
-        <footer 
-          id="mobile-thumb-dock" 
-          class="w-full z-30 shrink-0 px-2 py-2 bg-slate-900/90 backdrop-blur-md border-t border-slate-800/80 safe-area-bottom"
-          aria-label="Werkzeugleiste"
-        >
-          <!-- Mounted by ToolBar on mobile -->
-        </footer>
-      </main>
-
-      <!-- DESKTOP RIGHT SIDEBAR (Widescreen >= 1024px) -->
+      <!-- FLOATING DESKTOP RIGHT OVERLAY: Market & Council (Z-20, Collapsible) -->
       <aside 
         id="desktop-right-sidebar" 
-        class="hidden lg:flex flex-col w-80 shrink-0 border-l border-slate-800 bg-slate-900/90 backdrop-blur-md p-4 z-20 overflow-y-auto"
+        class="hidden lg:flex flex-col w-80 max-h-[calc(100vh-8.5rem)] absolute top-14 right-4 z-20 backdrop-blur-md bg-slate-900/75 border border-slate-700/60 rounded-2xl shadow-2xl p-4 overflow-y-auto transition-all duration-300 pointer-events-auto"
         aria-label="Hafenmarkt und Council Dossier"
       >
         <!-- Mounted by MarketTicker -->
       </aside>
+
+      <!-- BOTTOM TOOLBAR DOCK (Centered floating thumb dock, Z-30) -->
+      <footer 
+        id="mobile-thumb-dock" 
+        class="absolute bottom-2 left-0 right-0 z-30 px-2 py-1 pointer-events-none flex justify-center safe-area-bottom"
+        aria-label="Werkzeugleiste"
+      >
+        <!-- Mounted by ToolBar (buttons have pointer-events-auto) -->
+      </footer>
+
+      <!-- TUTORIAL MODAL OVERLAY (Mounted by TutorialModal, Z-50) -->
+      <div id="tutorial-container" class="relative z-50 pointer-events-auto"></div>
 
     </div>
 

@@ -5,6 +5,7 @@ import { CloudGrid, CondensatePocket } from '../core/CloudGrid';
 import { ProbePhysics, DrillHeadType } from '../core/ProbePhysics';
 import { ToolType } from '../ui/ToolBar';
 import { GameState } from '../core/GameState';
+import { CloudBand } from '../core/AuctionEngine';
 import { t } from '../i18n/i18n';
 
 interface CloudInstance {
@@ -40,6 +41,12 @@ export class SkyHarvestScene extends Phaser.Scene {
   private clouds: CloudInstance[] = [];
   private platform!: Phaser.GameObjects.Container;
   private probeHead!: Phaser.GameObjects.Sprite;
+  private skyBackgroundGraphics!: Phaser.GameObjects.Graphics;
+  private skyBoundaryGraphics!: Phaser.GameObjects.Graphics;
+  private zoneLabels: Phaser.GameObjects.Text[] = [];
+  private harborGraphics!: Phaser.GameObjects.Graphics;
+  private harborDockLabel!: Phaser.GameObjects.Text;
+  private harborBeacon!: Phaser.GameObjects.Arc;
   private cableGraphics!: Phaser.GameObjects.Graphics;
   private channelGraphics!: Phaser.GameObjects.Graphics;
   private pocketsGraphics!: Phaser.GameObjects.Graphics;
@@ -66,28 +73,43 @@ export class SkyHarvestScene extends Phaser.Scene {
   private tankStored = 0;
   private readonly tankMax = 100;
   private currentWeek = 1;
+  private activeBand: CloudBand | null = null;
 
   constructor() {
     super({ key: 'SkyHarvestScene' });
+  }
+
+  public init(data?: { cloudBand?: CloudBand }): void {
+    if (data?.cloudBand) {
+      this.activeBand = data.cloudBand;
+      GameState.getInstance().setActiveCloudBand(data.cloudBand);
+    } else {
+      this.activeBand = GameState.getInstance().getActiveCloudBand();
+    }
   }
 
   public create(): void {
     const width = this.cameras.main.width;
     const height = this.cameras.main.height;
 
-    // 1. Initialize Simulation Model
-    this.cloudGrid = new CloudGrid();
+    // 1. Initialize Simulation Model with custom pockets from active cloud band if present
+    const customPockets = this.activeBand?.actualData.pockets;
+    this.cloudGrid = new CloudGrid(customPockets, width, height);
     this.probeCurrentX = width / 2;
     this.probeTargetX = width / 2;
 
-    // 2. Sky Background Gradient by Zones
-    this.createSkyBackground(width, height);
+    // 2. Sky Background Graphics & Dynamic Zones
+    this.skyBackgroundGraphics = this.add.graphics();
+    this.skyBackgroundGraphics.setDepth(0);
+    this.skyBoundaryGraphics = this.add.graphics();
+    this.skyBoundaryGraphics.setDepth(1);
+    this.buildSkyBackground(width, height);
 
     // 3. Floating Zone Ambient Emitters
-    this.createZoneEmitters(width);
+    this.createZoneEmitters(width, height);
 
     // 4. Multi-Layer Drifting Cloud Sprites
-    this.createZoneClouds(width);
+    this.createZoneClouds(width, height);
 
     // 5. Channel Carving Trail Graphics (Kanalspur)
     this.channelGraphics = this.add.graphics();
@@ -98,7 +120,9 @@ export class SkyHarvestScene extends Phaser.Scene {
     this.pocketsGraphics.setDepth(5);
 
     // 7. Harbor Skyline Silhouette at Bottom
-    this.createHarborSkyline(width, height);
+    this.harborGraphics = this.add.graphics();
+    this.harborGraphics.setDepth(6);
+    this.buildHarborSkyline(width, height);
 
     // 8. Braided Suspension Cable Graphics
     this.cableGraphics = this.add.graphics();
@@ -126,79 +150,165 @@ export class SkyHarvestScene extends Phaser.Scene {
     // 15. Listen to Tool & Drill Head changes from ToolBar
     this.setupToolBarListeners();
 
+    // 16. Dynamic Full-Screen Resize Listener
+    this.scale.on('resize', this.handleResize, this);
+
+    // 17. Show arrival banner if active cloud band was acquired
+    if (this.activeBand) {
+      this.showBandArrivalBanner(width);
+    }
+
     // Fade in camera
     this.cameras.main.fadeIn(500, 15, 23, 42);
   }
 
-  private createSkyBackground(width: number, height: number): void {
+  private handleResize(gameSize: Phaser.Structs.Size): void {
+    const width = gameSize.width;
+    const height = gameSize.height;
+
+    this.cameras.main.setViewport(0, 0, width, height);
+    this.cloudGrid.setDimensions(width, height);
+
+    this.buildSkyBackground(width, height);
+    this.buildHarborSkyline(width, height);
+
+    if (this.platform) {
+      this.platform.setPosition(width / 2, 50);
+    }
+
+    if (this.sonarHintText) {
+      this.sonarHintText.setPosition(width / 2, 120);
+    }
+
+    // Keep probe inside screen bounds
+    this.probeCurrentX = Phaser.Math.Clamp(this.probeCurrentX, 30, width - 30);
+    this.probeCurrentY = Phaser.Math.Clamp(this.probeCurrentY, 80, height - 90);
+    this.probeTargetX = this.probeCurrentX;
+    this.probeTargetY = this.probeCurrentY;
+    if (this.probeHead) {
+      this.probeHead.setPosition(this.probeCurrentX, this.probeCurrentY);
+    }
+  }
+
+  private showBandArrivalBanner(width: number): void {
+    if (!this.activeBand) return;
+    const bannerContainer = this.add.container(width / 2, 80);
+    bannerContainer.setDepth(50);
+
     const bg = this.add.graphics();
+    bg.fillStyle(0x0F172A, 0.88);
+    bg.fillRoundedRect(-180, -22, 360, 44, 8);
+    bg.lineStyle(1.5, ColorPalette.uiHarbor.brassNum, 0.9);
+    bg.strokeRoundedRect(-180, -22, 360, 44, 8);
+    bannerContainer.add(bg);
 
-    // Layer 1: High Zone (0 to 380)
-    bg.fillGradientStyle(
+    const titleText = this.add.text(0, -6, `☁ ${this.activeBand.name}`, {
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: '13px',
+      color: '#F8FAFC',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    bannerContainer.add(titleText);
+
+    const subText = this.add.text(0, 10, `${this.activeBand.zone.toUpperCase()} ZONE • ${this.activeBand.estimatedSize} • BUNDEL-AUKTION`, {
+      fontFamily: 'monospace',
+      fontSize: '10px',
+      color: ColorPalette.uiHarbor.brass,
+    }).setOrigin(0.5);
+    bannerContainer.add(subText);
+
+    this.tweens.add({
+      targets: bannerContainer,
+      alpha: 0,
+      y: 60,
+      delay: 3800,
+      duration: 700,
+      onComplete: () => bannerContainer.destroy(),
+    });
+  }
+
+  private buildSkyBackground(width: number, height: number): void {
+    this.skyBackgroundGraphics.clear();
+    this.skyBoundaryGraphics.clear();
+
+    const highHeight = height * 0.40;
+    const midHeight = height * 0.28;
+    const midEnd = highHeight + midHeight;
+
+    // Layer 1: High Zone (0 to highHeight)
+    this.skyBackgroundGraphics.fillGradientStyle(
       ColorPalette.uiHarbor.deepBlackNum,
       ColorPalette.uiHarbor.deepBlackNum,
       0x1E2B45,
       0x1E2B45,
       1
     );
-    bg.fillRect(0, 0, width, 380);
+    this.skyBackgroundGraphics.fillRect(0, 0, width, highHeight);
 
-    // Layer 2: Mid Zone (380 to 650)
-    bg.fillGradientStyle(
+    // Layer 2: Mid Zone (highHeight to midEnd)
+    this.skyBackgroundGraphics.fillGradientStyle(
       0x1E2B45,
       0x1E2B45,
       0x241C48,
       0x241C48,
       1
     );
-    bg.fillRect(0, 380, width, 270);
+    this.skyBackgroundGraphics.fillRect(0, highHeight, width, midHeight);
 
-    // Layer 3: Low Zone (650 to 960)
-    bg.fillGradientStyle(
+    // Layer 3: Low Zone (midEnd to height)
+    this.skyBackgroundGraphics.fillGradientStyle(
       0x241C48,
       0x241C48,
       ColorPalette.lowZone.twilightVioletNum,
       ColorPalette.lowZone.stormIndigoNum,
       1
     );
-    bg.fillRect(0, 650, width, height - 650);
+    this.skyBackgroundGraphics.fillRect(0, midEnd, width, height - midEnd);
 
-    // Subtle Zone Boundary Lines
-    const lines = this.add.graphics();
-    lines.lineStyle(1, 0x38B2AC, 0.25);
-    lines.lineBetween(0, 380, width, 380);
-    lines.lineStyle(1, 0xFBBF24, 0.25);
-    lines.lineBetween(0, 650, width, 650);
+    // Subtle Zone Boundary Lines spanning full width
+    this.skyBoundaryGraphics.lineStyle(1, 0x38B2AC, 0.25);
+    this.skyBoundaryGraphics.lineBetween(0, highHeight, width, highHeight);
+    this.skyBoundaryGraphics.lineStyle(1, 0xFBBF24, 0.25);
+    this.skyBoundaryGraphics.lineBetween(0, midEnd, width, midEnd);
 
     // Zone labels in Neo-Pastell aesthetic
-    this.add.text(14, 130, 'HOCHZONE (FROSTKRISTALLE)', {
+    this.zoneLabels.forEach((lbl) => lbl.destroy());
+    this.zoneLabels = [];
+
+    const l1 = this.add.text(16, highHeight * 0.35, 'HOCHZONE (FROSTKRISTALLE)', {
       fontFamily: 'system-ui, sans-serif',
       fontSize: '10px',
       color: '#7DD3FC',
       letterSpacing: 2,
-    }).setAlpha(0.65);
+    }).setAlpha(0.65).setDepth(1);
 
-    this.add.text(14, 400, 'MITTELZONE (SKYWATER)', {
+    const l2 = this.add.text(16, highHeight + midHeight * 0.2, 'MITTELZONE (SKYWATER)', {
       fontFamily: 'system-ui, sans-serif',
       fontSize: '10px',
       color: '#93C5FD',
       letterSpacing: 2,
-    }).setAlpha(0.65);
+    }).setAlpha(0.65).setDepth(1);
 
-    this.add.text(14, 670, 'TIEFZONE (STURMLADUNG)', {
+    const l3 = this.add.text(16, midEnd + (height - midEnd) * 0.15, 'TIEFZONE (STURMLADUNG)', {
       fontFamily: 'system-ui, sans-serif',
       fontSize: '10px',
       color: '#F472B6',
       letterSpacing: 2,
-    }).setAlpha(0.65);
+    }).setAlpha(0.65).setDepth(1);
+
+    this.zoneLabels.push(l1, l2, l3);
   }
 
-  private createZoneClouds(width: number): void {
+  private createZoneClouds(width: number, height: number): void {
+    const highY = height * 0.22;
+    const midY = height * 0.52;
+    const lowY = height * 0.78;
+
     // High Zone Clouds (Drift Right, +3 cols/week)
     const highConfigs = [
-      { x: width * 0.2, y: 200, speed: 18, scale: 0.9, alpha: 0.85 },
-      { x: width * 0.75, y: 260, speed: 22, scale: 1.1, alpha: 0.8 },
-      { x: width * 1.2, y: 180, speed: 16, scale: 0.8, alpha: 0.75 },
+      { x: width * 0.15, y: highY - 20, speed: 18, scale: 0.9, alpha: 0.85 },
+      { x: width * 0.55, y: highY + 30, speed: 22, scale: 1.1, alpha: 0.8 },
+      { x: width * 0.90, y: highY - 10, speed: 16, scale: 0.85, alpha: 0.75 },
     ];
     highConfigs.forEach((cfg, i) => {
       const spr = this.add.sprite(cfg.x, cfg.y, 'cloud-high');
@@ -210,9 +320,9 @@ export class SkyHarvestScene extends Phaser.Scene {
 
     // Mid Zone Clouds (Drift Left, -2 cols/week)
     const midConfigs = [
-      { x: width * 0.15, y: 460, speed: -14, scale: 1.0, alpha: 0.85 },
-      { x: width * 0.65, y: 530, speed: -12, scale: 1.15, alpha: 0.8 },
-      { x: width * 1.1, y: 480, speed: -16, scale: 0.95, alpha: 0.75 },
+      { x: width * 0.10, y: midY - 25, speed: -14, scale: 1.0, alpha: 0.85 },
+      { x: width * 0.50, y: midY + 25, speed: -12, scale: 1.15, alpha: 0.8 },
+      { x: width * 0.85, y: midY - 15, speed: -16, scale: 0.95, alpha: 0.75 },
     ];
     midConfigs.forEach((cfg, i) => {
       const spr = this.add.sprite(cfg.x, cfg.y, 'cloud-mid');
@@ -224,8 +334,8 @@ export class SkyHarvestScene extends Phaser.Scene {
 
     // Low Zone Clouds (Drift Right, +1 col/week)
     const lowConfigs = [
-      { x: width * 0.3, y: 730, speed: 8, scale: 1.1, alpha: 0.8 },
-      { x: width * 0.8, y: 790, speed: 10, scale: 1.2, alpha: 0.85 },
+      { x: width * 0.25, y: lowY - 20, speed: 8, scale: 1.1, alpha: 0.8 },
+      { x: width * 0.70, y: lowY + 20, speed: 10, scale: 1.2, alpha: 0.85 },
     ];
     lowConfigs.forEach((cfg, i) => {
       const spr = this.add.sprite(cfg.x, cfg.y, 'cloud-low');
@@ -236,11 +346,11 @@ export class SkyHarvestScene extends Phaser.Scene {
     });
   }
 
-  private createZoneEmitters(width: number): void {
+  private createZoneEmitters(width: number, height: number): void {
     // Sparkles in High Zone
     const highParticles = this.add.particles(0, 0, 'particle-drop', {
       x: { min: 0, max: width },
-      y: { min: 140, max: 370 },
+      y: { min: height * 0.12, max: height * 0.38 },
       scale: { start: 0.35, end: 0 },
       alpha: { start: 0.7, end: 0 },
       tint: ColorPalette.highZone.turquoiseCrystalNum,
@@ -255,7 +365,7 @@ export class SkyHarvestScene extends Phaser.Scene {
     // Glowing Embers in Low Zone
     const lowParticles = this.add.particles(0, 0, 'particle-spark', {
       x: { min: 0, max: width },
-      y: { min: 660, max: 850 },
+      y: { min: height * 0.68, max: height * 0.88 },
       scale: { start: 0.5, end: 0.1 },
       alpha: { start: 0.8, end: 0 },
       tint: ColorPalette.lowZone.glowGoldNum,
@@ -268,41 +378,48 @@ export class SkyHarvestScene extends Phaser.Scene {
     lowParticles.setDepth(1);
   }
 
-  private createHarborSkyline(width: number, height: number): void {
-    const harbor = this.add.graphics();
-    harbor.fillStyle(ColorPalette.uiHarbor.deepBlackNum, 0.96);
-    harbor.fillRect(0, height - 70, width, 70);
+  private buildHarborSkyline(width: number, height: number): void {
+    this.harborGraphics.clear();
+    this.harborGraphics.fillStyle(ColorPalette.uiHarbor.deepBlackNum, 0.96);
+    this.harborGraphics.fillRect(0, height - 70, width, 70);
 
-    // Silhouetted hangars and spires
-    harbor.beginPath();
-    harbor.moveTo(40, height - 70);
-    harbor.lineTo(60, height - 120);
-    harbor.lineTo(80, height - 70);
+    // Silhouetted hangars and spires across full width
+    this.harborGraphics.beginPath();
+    this.harborGraphics.moveTo(40, height - 70);
+    this.harborGraphics.lineTo(60, height - 120);
+    this.harborGraphics.lineTo(80, height - 70);
 
-    harbor.moveTo(width - 120, height - 70);
-    harbor.lineTo(width - 90, height - 135);
-    harbor.lineTo(width - 60, height - 70);
-    harbor.fill();
-    harbor.setDepth(6);
+    this.harborGraphics.moveTo(width - 120, height - 70);
+    this.harborGraphics.lineTo(width - 90, height - 135);
+    this.harborGraphics.lineTo(width - 60, height - 70);
+    this.harborGraphics.fill();
 
     // Harbor beacon light
-    const beacon = this.add.circle(width - 90, height - 138, 4, ColorPalette.uiHarbor.brassNum);
-    beacon.setDepth(7);
-    this.tweens.add({
-      targets: beacon,
-      alpha: 0.2,
-      duration: 1200,
-      yoyo: true,
-      repeat: -1,
-    });
+    if (!this.harborBeacon) {
+      this.harborBeacon = this.add.circle(width - 90, height - 138, 4, ColorPalette.uiHarbor.brassNum);
+      this.harborBeacon.setDepth(7);
+      this.tweens.add({
+        targets: this.harborBeacon,
+        alpha: 0.2,
+        duration: 1200,
+        yoyo: true,
+        repeat: -1,
+      });
+    } else {
+      this.harborBeacon.setPosition(width - 90, height - 138);
+    }
 
-    const dockLabel = this.add.text(width / 2, height - 35, 'HIMMELSHAFEN & ANLEGESTELLE', {
-      fontFamily: 'system-ui, sans-serif',
-      fontSize: '11px',
-      color: '#64748B',
-      letterSpacing: 2,
-    }).setOrigin(0.5);
-    dockLabel.setDepth(7);
+    if (!this.harborDockLabel) {
+      this.harborDockLabel = this.add.text(width / 2, height - 35, 'HIMMELSHAFEN & ANLEGESTELLE', {
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: '11px',
+        color: '#64748B',
+        letterSpacing: 2,
+      }).setOrigin(0.5);
+      this.harborDockLabel.setDepth(7);
+    } else {
+      this.harborDockLabel.setPosition(width / 2, height - 35);
+    }
   }
 
   private createSuspendedPlatform(width: number): void {
@@ -323,19 +440,21 @@ export class SkyHarvestScene extends Phaser.Scene {
       alpha: { start: 0.75, end: 0.0 },
       speed: { min: 20, max: 70 },
       lifespan: 380,
+      blendMode: Phaser.BlendModes.ADD,
       emitting: false,
     });
     this.cuttingEmitter.setDepth(4);
   }
 
   private createSonarHUD(width: number): void {
-    this.sonarHintText = this.add.text(width / 2, 100, '', {
+    this.sonarHintText = this.add.text(width / 2, 120, '', {
       fontFamily: 'system-ui, sans-serif',
-      fontSize: '13px',
-      color: '#FBBF24',
-      backgroundColor: '#0F172Aee',
-      padding: { x: 10, y: 5 },
-    }).setOrigin(0.5).setAlpha(0).setDepth(20);
+      fontSize: '12px',
+      color: '#F8FAFC',
+      fontStyle: 'bold',
+      backgroundColor: '#0F172ACC',
+      padding: { x: 12, y: 6 },
+    }).setOrigin(0.5).setDepth(20).setAlpha(0);
   }
 
   private setupToolBarListeners(): void {
@@ -376,11 +495,11 @@ export class SkyHarvestScene extends Phaser.Scene {
   }
 
   private setupInputHandlers(): void {
-    const width = this.cameras.main.width;
-
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       AudioManager.getInstance().init();
       this.isPointerActive = true;
+      const width = this.cameras.main.width;
+      const height = this.cameras.main.height;
 
       // Scan Tool (Windfühler) Trigger
       if (this.activeTool === 'scan') {
@@ -388,17 +507,15 @@ export class SkyHarvestScene extends Phaser.Scene {
         return;
       }
 
-      // Drill Tool (Interactive probe dragging)
+      // Drill Tool (Full Available Screen Steer)
       if (this.activeTool === 'drill') {
-        const minX = width / 2 - 110;
-        const maxX = width / 2 + 110;
-        this.probeTargetX = Phaser.Math.Clamp(pointer.x, minX, maxX);
-        this.probeTargetY = Phaser.Math.Clamp(pointer.y, 80, 840);
+        this.probeTargetX = Phaser.Math.Clamp(pointer.x, 30, width - 30);
+        this.probeTargetY = Phaser.Math.Clamp(pointer.y, 80, height - 90);
 
         // If clicked far from docked pocket, unlatch
         if (this.isDocked && this.dockedPocket) {
           const dist = Phaser.Math.Distance.Between(pointer.x, pointer.y, this.dockedPocket.x, this.dockedPocket.y);
-          if (dist > 75) {
+          if (dist > 85) {
             this.isDocked = false;
             this.dockedPocket = null;
             AudioManager.getInstance().playCableRelease();
@@ -409,10 +526,10 @@ export class SkyHarvestScene extends Phaser.Scene {
 
     this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
       if (pointer.isDown && this.isPointerActive && this.activeTool === 'drill') {
-        const minX = width / 2 - 110;
-        const maxX = width / 2 + 110;
-        this.probeTargetX = Phaser.Math.Clamp(pointer.x, minX, maxX);
-        this.probeTargetY = Phaser.Math.Clamp(pointer.y, 80, 840);
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+        this.probeTargetX = Phaser.Math.Clamp(pointer.x, 30, width - 30);
+        this.probeTargetY = Phaser.Math.Clamp(pointer.y, 80, height - 90);
       }
     });
 
@@ -427,7 +544,7 @@ export class SkyHarvestScene extends Phaser.Scene {
    */
   private triggerWindSensor(x: number, y: number): void {
     const nearest = this.cloudGrid.findNearestPocket(x, y);
-    const maxPingRadius = 160; // 3-field radius
+    const maxPingRadius = 160;
 
     let distanceRatio = 1.0;
     let hintMsg = t('scan.colder');
@@ -447,10 +564,8 @@ export class SkyHarvestScene extends Phaser.Scene {
       }
     }
 
-    // Play Sonar Beep
     AudioManager.getInstance().playSonarPing(distanceRatio);
 
-    // Add visual expanding pulse
     this.activeSonarPulses.push({
       x,
       y,
@@ -460,11 +575,11 @@ export class SkyHarvestScene extends Phaser.Scene {
       color: pingColor,
     });
 
-    // Show floating hint banner
+    const height = this.cameras.main.height;
     this.sonarHintText.setText(hintMsg);
-    this.sonarHintText.setPosition(this.cameras.main.width / 2, Phaser.Math.Clamp(y - 45, 110, 800));
+    this.sonarHintText.setPosition(this.cameras.main.width / 2, Phaser.Math.Clamp(y - 45, 110, height - 120));
     this.sonarHintText.setAlpha(1.0);
-    this.sonarHintTimer = 2.4; // Show for 2.4 seconds
+    this.sonarHintTimer = 2.4;
   }
 
   public update(_time: number, delta: number): void {
@@ -506,7 +621,7 @@ export class SkyHarvestScene extends Phaser.Scene {
   }
 
   /**
-   * Updates probe motion, dynamic speed braking, and drilling sounds
+   * Updates probe motion, dynamic speed braking, and cheerful drilling acoustics
    */
   private updateProbeMotion(dt: number, _winchX: number, _winchY: number): void {
     const dy = this.probeTargetY - this.probeCurrentY;
@@ -558,7 +673,7 @@ export class SkyHarvestScene extends Phaser.Scene {
       : Math.sin(this.timeElapsed * 3) * 1.5;
     this.probeHead.setAngle(wobbleAngle);
 
-    // Audio & Micro-haptics update
+    // Audio update (cheerful kalimba plings & water bubbles)
     if (this.activeTool === 'drill') {
       AudioManager.getInstance().updateDrillSound(isDrilling, currentZone, isMatching);
     } else {
@@ -599,11 +714,12 @@ export class SkyHarvestScene extends Phaser.Scene {
     if (this.isDocked && this.dockedPocket) {
       const p = this.dockedPocket;
 
-      // Safe release if user drags far away or pocket drifts beyond cable stretch
+      // Safe release if user drags far away or pocket drifts beyond screen stretch
       const dragDist = Phaser.Math.Distance.Between(this.probeTargetX, this.probeTargetY, p.x, p.y);
       const cableSpan = Math.abs(p.x - winchX);
+      const maxSpan = Math.max(160, this.cameras.main.width * 0.45);
 
-      if (dragDist > 85 || cableSpan > 135 || p.isDepleted) {
+      if (dragDist > 95 || cableSpan > maxSpan || p.isDepleted) {
         this.isDocked = false;
         this.dockedPocket = null;
         AudioManager.getInstance().playCableRelease();
@@ -617,7 +733,7 @@ export class SkyHarvestScene extends Phaser.Scene {
 
         // Visible Extraction Flow
         if (p.currentVolume > 0 && this.tankStored < this.tankMax) {
-          const rate = 14.0; // units/sec
+          const rate = 14.0;
           const extracted = this.cloudGrid.extractFromPocket(p.id, rate, dt);
           this.tankStored = Math.min(this.tankMax, this.tankStored + extracted);
           this.updateTankDisplay();
@@ -648,6 +764,8 @@ export class SkyHarvestScene extends Phaser.Scene {
 
     const cols = this.cloudGrid.columns;
     const layers = this.cloudGrid.layers;
+    const colWidth = this.cloudGrid.width / cols;
+    const layerHeight = (this.cloudGrid.gridBottomY - this.cloudGrid.gridTopY) / layers;
 
     for (let r = 0; r < layers; r++) {
       for (let c = 0; c < cols; c++) {
@@ -655,8 +773,8 @@ export class SkyHarvestScene extends Phaser.Scene {
         if (!cell || cell.carveFactor <= 0.04) continue;
 
         const f = cell.carveFactor;
-        const w = 24 * f;
-        const h = 64;
+        const w = Math.max(22, colWidth * 0.85) * f;
+        const h = Math.max(50, layerHeight * 0.98);
 
         // Clear borehole cutout showing deep sky behind
         this.channelGraphics.fillStyle(0x0A0F1D, 0.78 * f);
@@ -679,7 +797,6 @@ export class SkyHarvestScene extends Phaser.Scene {
    */
   private renderPockets(): void {
     this.pocketsGraphics.clear();
-
     const pockets = this.cloudGrid.getPockets();
 
     for (const p of pockets) {
@@ -687,7 +804,6 @@ export class SkyHarvestScene extends Phaser.Scene {
       const isDepleted = p.isDepleted;
 
       if (isDepleted) {
-        // Faint spent hollow ring
         this.pocketsGraphics.lineStyle(1.5, 0x64748B, 0.4);
         this.pocketsGraphics.strokeCircle(p.x, p.y, p.radius * 0.7);
         continue;
@@ -750,7 +866,6 @@ export class SkyHarvestScene extends Phaser.Scene {
       new Phaser.Math.Vector2(curveData.endX, curveData.endY)
     );
 
-    // Cable stroke
     const cableColor = this.isDocked
       ? ColorPalette.highZone.turquoiseCrystalNum
       : ColorPalette.uiHarbor.brassNum;
@@ -764,7 +879,6 @@ export class SkyHarvestScene extends Phaser.Scene {
       drop.t += drop.speed * dt;
 
       if (drop.t >= 1.0) {
-        // Droplet arrived at platform winch!
         AudioManager.getInstance().playExtractDrop();
         GameState.getInstance().addCredits(1);
         this.updateCreditsDisplay();
@@ -772,7 +886,6 @@ export class SkyHarvestScene extends Phaser.Scene {
         continue;
       }
 
-      // Sample along quadratic Bezier curve from probe to winch
       const pt = cableCurve.getPoint(1.0 - drop.t);
       this.cableGraphics.fillStyle(drop.color, 0.95);
       this.cableGraphics.fillCircle(pt.x, pt.y, drop.size);
@@ -800,7 +913,6 @@ export class SkyHarvestScene extends Phaser.Scene {
       }
     }
 
-    // Sonar hint timer
     if (this.sonarHintTimer > 0) {
       this.sonarHintTimer -= dt;
       if (this.sonarHintTimer <= 0) {
@@ -812,17 +924,17 @@ export class SkyHarvestScene extends Phaser.Scene {
   }
 
   /**
-   * Updates background cloud drift and bounds wrapping
+   * Updates background cloud drift and bounds wrapping across full screen
    */
   private updateClouds(width: number, dt: number): void {
     this.clouds.forEach((c) => {
       c.sprite.x += c.speed * dt;
       c.sprite.y = c.initialY + Math.sin(this.timeElapsed + c.bobOffset) * 4;
 
-      if (c.speed > 0 && c.sprite.x - 150 > width) {
-        c.sprite.x = -140;
-      } else if (c.speed < 0 && c.sprite.x + 150 < 0) {
-        c.sprite.x = width + 140;
+      if (c.speed > 0 && c.sprite.x - 180 > width) {
+        c.sprite.x = -160;
+      } else if (c.speed < 0 && c.sprite.x + 180 < 0) {
+        c.sprite.x = width + 160;
       }
     });
   }

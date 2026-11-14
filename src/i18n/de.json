@@ -10,7 +10,11 @@
     "speed": "Tempo",
     "pause": "Pause",
     "resume": "Weiter",
-    "lang": "Sprache"
+    "lang": "Sprache",
+    "auction": "Auktion",
+    "help": "HILFE / TUTORIAL",
+    "radar": "RADAR",
+    "market": "BÖRSE"
   },
   "zones": {
     "high": "Hochzone",
@@ -79,5 +83,120 @@
     "drifting": "Driftend",
     "harvesting": "Fördernd",
     "idle": "Bereit"
+  },
+  "auction": {
+    "title": "Wolkenband-Auktion",
+    "subtitle": "3 verdeckte Gebotsrunden • 6 Himmelslizenzen",
+    "round": "Runde",
+    "of": "von",
+    "credits": "CR",
+    "size": "Größe",
+    "baseValue": "Basiswert",
+    "yourBid": "Dein Gebot",
+    "sealAndReveal": "Gebote versiegeln & enthüllen",
+    "nextRound": "Nächste Runde",
+    "viewSummary": "Auktions-Ergebnis",
+    "startSeason": "Saison starten & Wolke anfliegen",
+    "selectBand": "Wähle dein Start-Wolkenband:",
+    "fallbackBand": "Not-Konzession: Ausweich-Stratum",
+    "winner": "Gewinner",
+    "won": "GEWONNEN",
+    "outbid": "ÜBERBOTEN",
+    "youWon": "Du hast dieses Wolkenband ersteigert!",
+    "rivalWon": "Zuschlag an Rivale:",
+    "scans": {
+      "windSensor": "Windfühler",
+      "windSensorDesc": "Dichte & Taschen",
+      "echoDrone": "Echo-Drohne",
+      "echoDroneDesc": "Tiefe & Position",
+      "spectralScan": "Spektralscan",
+      "spectralScanDesc": "Rohstoff, Güte & Aurora"
+    },
+    "telemetry": {
+      "densityLow": "Kristallin-Dünn",
+      "densityMid": "Ausgeglichen-Mittel",
+      "densityHigh": "Dicht & Stürmisch",
+      "pockets": "Taschen",
+      "depth": "Tiefe",
+      "layer": "Schicht",
+      "westFlank": "Westflanke",
+      "centerCorridor": "Zentralkorridor",
+      "eastFlank": "Ostflanke",
+      "quality": "Qualität",
+      "auroraYes": "✨ Aurora-Signal! (+1 Council)",
+      "auroraNo": "Keine Aurora"
+    },
+    "hints": {
+      "highGlacierGlance": "Feine Eiskristall-Reflexion in oberen Schichten.",
+      "midCalmFlow": "Gleichmäßige Feuchte und sanfte laminare Strömung.",
+      "lowStaticHum": "Statische Entladungen und anomale Aurora-Schwingung.",
+      "highThinCrystal": "Sehr dünne Hochzone mit reinen Frost-Adern.",
+      "midSoftReservoir": "Stabiler Kondensatspeicher im Mittelkorridor.",
+      "lowDenseSurge": "Hohe Energiedichte mit starken Turbulenzfronten."
+    },
+    "quotes": {
+      "daredevilHighWin": "Das Frostband gehört mir! Genau dort oben schlagen die Blitze des Profits ein!",
+      "daredevilGeneralWin": "Wer bremst, verliert! Dieser Himmel ist mein Revier!",
+      "daredevilHighLoss": "Verdammt... jemand hat mich in der Hochzone überboten?! Das vergesse ich nicht!",
+      "daredevilGeneralLoss": "Pah! Sollen sie die Flaute haben. Mein großes Ding kommt noch!",
+      "calculatorWin": "Mathematisch betrachtet ist dieses Band solide kalkuliert. Ein exzellenter Schnitt.",
+      "calculatorLoss": "Der Erwartungswert rechtfertigte kein höheres Gebot. Disziplin schlägt Emotion.",
+      "trackerAuroraWin": "Ich wusste es! Die Aurora-Spur hat nicht getäuscht. Ein Meisterfund!",
+      "trackerWin": "Meine Sensoren schlagen aus... hier verbirgt sich etwas Einzigartiges!",
+      "trackerLoss": "Nicht schlimm. Meine Drohnen haben bereits die nächste Anomalie im Visier."
+    }
+  },
+  "tutorial": {
+    "advisor": "Balo 🎈",
+    "advisorRole": "Wetterballon & Fluglehrer",
+    "prev": "< Zurück",
+    "next": "Weiter >",
+    "finish": "Los geht's! 🚀",
+    "close": "Schließen (ESC)",
+    "step": "Schritt",
+    "of": "von",
+    "step1": {
+      "title": "Willkommen im Himmel!",
+      "lead": "Als Wolkenernter steuerst du eine schwebende Plattform über dem Himmelshafen.",
+      "text": "Die Atmosphäre teilt sich in drei einzigartige Höhenzonen:",
+      "zoneHigh": "❄️ Hochzone (Frostkristalle): Dünne Wolken, reines Eis, höchster Grundwert (25 CR).",
+      "zoneMid": "💧 Mittelzone (Skywater): Ausgeglichene Feuchte, stabiles Volumen (10 CR).",
+      "zoneLow": "⚡ Tiefzone (Sturmladung): Dichte Gewitterwolken, hohe Volatilität (18 CR)."
+    },
+    "step2": {
+      "title": "Sonde & Bohrkopf steuern",
+      "lead": "Steuere die Sonde direkt durch Klicken oder Touch.",
+      "text": "Klicke unterhalb der Plattform und ziehe den Bohrkopf nach unten in die Wolkenschichten. Die Sonde schneidet automatisch eine Kanalspur (Bohrloch) frei, durch die du später ohne Widerstand gleiten kannst.",
+      "tip": "💡 Das flexible Seil federt Böen mit realistischer Kettenkurven-Physik ab."
+    },
+    "step3": {
+      "title": "Bohrköpfe passend wechseln",
+      "lead": "Passe deinen Bohrkopf immer an die aktuelle Zone an!",
+      "text": "Wechsle blitzschnell mit Tasten [Q], [W], [E] oder über das Daumen-Dock:",
+      "headIce": "❄️ Eisbohrer [Taste Q]: Schneidet mühelos durch gefrorene Hochzonen.",
+      "headFog": "💧 Nebelfänger [Taste W]: Zieht feuchte Mittelzonen-Tröpfchen an.",
+      "headCharge": "⚡ Ladungsspitze [Taste E]: Leitet elektrische Tiefzonen-Entladungen ab.",
+      "warning": "⚠️ Achtung: Mit dem falschen Kopf erleidest du einen 50% Geschwindigkeits-Malus und hohen Reibungswiderstand!"
+    },
+    "step4": {
+      "title": "Kondensattaschen ernten",
+      "lead": "Finde und docke an leuchtende Kondensat-Reservoirs an.",
+      "text": "Steuere die Sonde in eine leuchtende Tasche. Sie dockt mit sanftem Klick ein. Glitzernde Kondensattropfen wandern am Förderseil nach oben in deinen Vorratstank.",
+      "tip": "💡 Voller Tank? Schließe Förderleitungen an oder liefere an der Himmelshafen-Börse ab, um Credits (CR) zu kassieren."
+    },
+    "step5": {
+      "title": "Windfühler-Sonar-Scan",
+      "lead": "Nutze das Sonar, wenn Taschen im Nebel verborgen sind.",
+      "text": "Wähle Werkzeug-Slot 1 [Taste 1] für den Windfühler. Klicke in die Wolkendecke, um eine Sonarwelle auszusenden. Die akustischen Heiß/Kalt-Signale leiten dich:",
+      "signalHot": "🔥 HEISS: Tasche direkt in Reichweite!",
+      "signalWarmer": "⚡ WÄRMER: Kondensat-Signal in unmittelbarer Nähe.",
+      "signalColder": "❄️ KALT: Schwaches Signal, suche in einer anderen Schicht."
+    },
+    "step6": {
+      "title": "Wolken-Drift & Sky-Council",
+      "lead": "Der Himmel steht niemals still – er pendelt im 4-Wochen-Zyklus!",
+      "text": "Wolkenbänder driften regelmäßig nach Ost und West und kehren alle 4 Wochen zu ihrem Ursprung zurück. Klicke oben auf [🔨 AUKTION], um lukrative Wolkenbänder gegen deine KI-Rivalen zu ersteigern und Sky-Council Anteile zu sammeln!",
+      "tip": "🌟 Meistere den Himmel und baue dein Schürf-Imperium auf. Viel Erfolg, Harvester!"
+    }
   }
 }
