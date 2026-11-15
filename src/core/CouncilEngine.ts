@@ -66,16 +66,19 @@ export class CouncilEngine {
   private bidders: Map<string, BidderProfile> = new Map();
   private sessionHistory: CouncilSessionResult[] = [];
   private completedSessions: Set<number> = new Set();
+  private currentPlayerName = 'Captain Sky';
 
-  constructor(playerStartingCredits = 1000) {
-    this.initBidders(playerStartingCredits);
+  constructor(playerStartingCredits = 1000, playerName = 'Captain Sky') {
+    this.currentPlayerName = playerName;
+    this.initBidders(playerStartingCredits, playerName);
   }
 
-  public initBidders(playerCredits = 1000): void {
+  public initBidders(playerCredits = 1000, playerName?: string): void {
+    if (playerName) this.currentPlayerName = playerName;
     this.bidders.clear();
     this.bidders.set('player', {
       id: 'player',
-      name: 'Player',
+      name: this.currentPlayerName,
       type: 'player',
       credits: playerCredits,
       sharesWon: 0,
@@ -157,6 +160,19 @@ export class CouncilEngine {
   public setPlayerCredits(credits: number): void {
     const player = this.bidders.get('player');
     if (player) player.credits = credits;
+  }
+
+  public setPlayerName(name: string): void {
+    const sanitized = name.trim();
+    if (sanitized) {
+      this.currentPlayerName = sanitized;
+      const player = this.bidders.get('player');
+      if (player) player.name = sanitized;
+    }
+  }
+
+  public getPlayerName(): string {
+    return this.currentPlayerName;
   }
 
   /**

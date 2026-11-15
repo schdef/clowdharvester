@@ -14,9 +14,9 @@ export class MarketTicker {
   private containerElement: HTMLElement | null = null;
   private isCollapsed = true;
   private prices: CommodityPrice[] = [
-    { nameKey: 'zones.resourceHigh', price: 25, change: 1.8, color: ColorPalette.highZone.turquoiseCrystal },
-    { nameKey: 'zones.resourceMid', price: 10, change: -0.5, color: ColorPalette.midZone.condensateDrop },
-    { nameKey: 'zones.resourceLow', price: 18, change: 4.2, color: ColorPalette.lowZone.glowGold },
+    { nameKey: 'zones.resourceHigh', price: 10, change: 1.8, color: ColorPalette.highZone.turquoiseCrystal },
+    { nameKey: 'zones.resourceMid', price: 22, change: -0.5, color: ColorPalette.midZone.condensateDrop },
+    { nameKey: 'zones.resourceLow', price: 40, change: 4.2, color: ColorPalette.lowZone.glowGold },
   ];
   private playerShares = 0;
   private daredevilShares = 0;
@@ -52,7 +52,7 @@ export class MarketTicker {
     const skywaterPrice = market.getPrice('skywater');
     const stormPrice = market.getPrice('storm');
 
-    const livePrices: CommodityPrice[] = this.prices.length === 3 && this.prices[0].price !== 25
+    const livePrices: CommodityPrice[] = this.prices.length === 3 && this.prices[0].price !== 10
       ? this.prices
       : [
           {

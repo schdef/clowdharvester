@@ -120,33 +120,33 @@ console.log('✅ Test 3 Passed: 2% weekly evaporation correctly applied across a
 // --------------------------------------------------------------------------
 console.log('\n--- Test 4: Harbor Market Commodity Pricing, Damping & Recovery ---');
 
-// Base Prices: Skywater (10 CR), Frostkristalle (25 CR), Sturmladung (18 CR)
-assert.strictEqual(market.getBasePrice('skywater'), 10, 'Skywater base price is 10 CR');
-assert.strictEqual(market.getBasePrice('frost'), 25, 'Frostkristalle base price is 25 CR');
-assert.strictEqual(market.getBasePrice('storm'), 18, 'Sturmladung base price is 18 CR');
+// Base Prices: Frostkristalle (10 CR), Skywater (22 CR), Sturmladung (40 CR)
+assert.strictEqual(market.getBasePrice('frost'), 10, 'Frostkristalle base price is 10 CR');
+assert.strictEqual(market.getBasePrice('skywater'), 22, 'Skywater base price is 22 CR');
+assert.strictEqual(market.getBasePrice('storm'), 40, 'Sturmladung base price is 40 CR');
 
 // Price Damping: Selling 10 units temporarily lowers price by 2%
 const initialFrostPrice = market.getPrice('frost');
-assert.strictEqual(initialFrostPrice, 25, 'Initial frost price is 25 CR');
+assert.strictEqual(initialFrostPrice, 10, 'Initial frost price is 10 CR');
 
 const earnings10 = market.executeSale('frost', 10);
-assert.strictEqual(earnings10, 250, '10 units sold at 25 CR yields 250 CR');
+assert.strictEqual(earnings10, 100, '10 units sold at 10 CR yields 100 CR');
 
 const dampedFrostPrice = market.getPrice('frost');
-const expectedDamped = 25 * 0.98; // 24.5 CR
+const expectedDamped = 10 * 0.98; // 9.8 CR
 assert.strictEqual(Math.round(dampedFrostPrice * 1000) / 1000, expectedDamped, 'Price drops 2% after selling 10 units');
 
 // Selling 20 units drops price by 2 batches (0.98^2)
 const earnings20 = market.executeSale('skywater', 20);
-assert.strictEqual(earnings20, 200, '20 units sold at 10 CR yields 200 CR');
-const expectedWaterDamped = 10 * Math.pow(0.98, 2);
+assert.strictEqual(earnings20, 440, '20 units sold at 22 CR yields 440 CR');
+const expectedWaterDamped = 22 * Math.pow(0.98, 2);
 assert.strictEqual(Math.round(market.getPrice('skywater') * 1000) / 1000, Math.round(expectedWaterDamped * 1000) / 1000, 'Price drops 2x2% after selling 20 units');
 
 // Weekly Recovery: Prices recover 5% towards base price
 const priceBeforeRecovery = market.getPrice('frost');
 market.stepWeeklyRecovery();
 const priceAfterRecovery = market.getPrice('frost');
-const expectedRecovered = priceBeforeRecovery + (25 - priceBeforeRecovery) * 0.05;
+const expectedRecovered = priceBeforeRecovery + (10 - priceBeforeRecovery) * 0.05;
 assert.strictEqual(Math.round(priceAfterRecovery * 1000) / 1000, Math.round(expectedRecovered * 1000) / 1000, 'Price recovers 5% towards base price');
 
 // Sell All from GameState

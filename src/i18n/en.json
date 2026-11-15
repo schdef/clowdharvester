@@ -15,7 +15,11 @@
     "help": "HELP",
     "radar": "RADAR",
     "market": "MARKET",
-    "council": "COUNCIL"
+    "council": "COUNCIL",
+    "modeSolo": "Solo Sector",
+    "modeSoloDesc": "Standard: Private harvesting sector without rival interference",
+    "modeArena": "Shared Arena",
+    "modeArenaDesc": "Challenge: Shared arena with fair AI rivals"
   },
   "zones": {
     "zone": "Zone",
@@ -127,7 +131,11 @@
     "spectralFound": "🔬 Spectral Scan: Deposit analyzed!",
     "spectralEmpty": "🔬 Spectral Scan: No deposits in scan radius",
     "notEnoughCredits": "Not enough Credits!",
-    "blindDiscovery": "🎉 Direct hit! Concealed deposit discovered!"
+    "blindDiscovery": "🎉 Direct hit! Concealed deposit discovered!",
+    "scanGuideBanner": "📡 Click clouds to scan (50 CR)",
+    "scanGuideBannerWind": "📡 Click clouds to scan (50 CR)",
+    "scanGuideBannerDrone": "🚁 Click clouds to scan (150 CR)",
+    "scanGuideBannerSpectral": "🔬 Click clouds to scan (400 CR)"
   },
   "radar": {
     "title": "4-Week Wind Radar",
@@ -423,5 +431,39 @@
     "relocated": "⚓ Platform relocated! (-50 CR)",
     "notEnoughCreditsRelocate": "⚠️ Not enough credits to relocate (50 CR)!",
     "replenished": "☁️ Fresh cloud band reached! Week"
+  },
+  "aerialMarket": {
+    "aeroSyndicate": "Aero Syndicate",
+    "skyGuild": "Sky Guild",
+    "stationDocked": "🔗 Pipeline connected to station!",
+    "livePriceUnit": "CR/E",
+    "sellingTooltip": "Continuously selling condensate",
+    "soldFloating": "+{cr} CR",
+    "connectingHint": "Station targeted"
+  },
+  "profile": {
+    "title": "Pilot Profile",
+    "subtitle": "Customize your callsign for the Sky-Council and season leaderboard.",
+    "nameLabel": "Pilot Callsign",
+    "placeholder": "e.g. Captain Sky",
+    "infoText": "This name represents you in the Sky-Council, expedition reports, and season standings.",
+    "save": "Save",
+    "cancel": "Cancel",
+    "errorEmpty": "Please enter a name.",
+    "errorLength": "Maximum 18 characters allowed."
+  },
+  "layerChallenge": {
+    "title": "Zone Challenge",
+    "density": "Density",
+    "recommended": "Drill Head",
+    "statusOptimal": "✓ OPTIMAL",
+    "statusPenalty": "⚠️ 50% SLOWDOWN",
+    "iceResistance": "ICE CRUST RESISTANCE (50% Slowdown)",
+    "fogResistance": "MIST TURBULENCE (50% Slowdown)",
+    "chargeResistance": "HIGH VOLTAGE RESISTANCE (50% Slowdown)"
+  },
+  "drone": {
+    "scanning": "Scanning cloud layer...",
+    "pocketFound": "Pocket detected!"
   }
 }

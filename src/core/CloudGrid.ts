@@ -184,7 +184,7 @@ export class CloudGrid {
         maxCapacity: 100,
         currentVolume: 100,
         isDepleted: false,
-        valuePerUnit: 25,
+        valuePerUnit: 10,
         discoveryState: 'concealed',
         quality: 2,
         sizeCategory: 'M',
@@ -202,7 +202,7 @@ export class CloudGrid {
         maxCapacity: 120,
         currentVolume: 120,
         isDepleted: false,
-        valuePerUnit: 10,
+        valuePerUnit: 22,
         discoveryState: 'concealed',
         quality: 1,
         sizeCategory: 'L',
@@ -220,7 +220,7 @@ export class CloudGrid {
         maxCapacity: 90,
         currentVolume: 90,
         isDepleted: false,
-        valuePerUnit: 18,
+        valuePerUnit: 75,
         isAurora: true,
         hasAwardedAurora: false,
         discoveryState: 'concealed',
@@ -318,6 +318,20 @@ export class CloudGrid {
       }
     }
     return freshCarved;
+  }
+
+  /**
+   * Resets all carved channels across the grid (sets carveFactor = 0, carveTimer = 0).
+   * Called during week transitions for a clean new sector slate.
+   */
+  public resetCarving(): void {
+    for (let r = 0; r < this.layers; r++) {
+      for (let c = 0; c < this.columns; c++) {
+        const cell = this.cells[r][c];
+        cell.carveFactor = 0.0;
+        cell.carveTimer = 0.0;
+      }
+    }
   }
 
   /**

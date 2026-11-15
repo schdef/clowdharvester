@@ -34,6 +34,16 @@
             </div>
             <span id="header-week-timer-text" class="text-[10px] text-slate-400 hidden md:inline">60s</span>
           </div>
+
+          <!-- Clickable Pilot Profile Badge -->
+          <button 
+            id="btn-pilot-profile" 
+            class="flex items-center space-x-1 px-2 py-0.5 rounded bg-indigo-950/80 hover:bg-indigo-900 text-indigo-200 border border-indigo-700/60 transition cursor-pointer text-xs font-semibold shadow-sm"
+            title="Pilotenprofil bearbeiten / Edit Pilot Profile"
+          >
+            <span>✈️</span>
+            <span id="header-pilot-name" class="max-w-[70px] sm:max-w-[110px] truncate">Captain Sky</span>
+          </button>
         </div>
 
         <!-- Center: Credits & Harvester Storage -->
@@ -79,6 +89,16 @@
             <span>🏛️</span>
             <span id="header-council-label" class="hidden sm:inline">COUNCIL</span>
             <span id="header-council-badge" class="px-1 py-0.2 text-[10px] bg-indigo-900/90 rounded text-amber-300 font-bold border border-indigo-700/50">0/30</span>
+          </button>
+
+          <!-- Game Mode Toggle Button -->
+          <button 
+            id="btn-mode-toggle" 
+            class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-sky-300 border border-slate-700 transition text-[11px] font-semibold cursor-pointer flex items-center space-x-1"
+            title="Modus wechseln / Switch Mode"
+          >
+            <span id="header-mode-icon">🛡️</span>
+            <span id="header-mode-label" class="hidden md:inline">Eigener Sektor</span>
           </button>
 
           <!-- Language Switcher -->
@@ -142,6 +162,9 @@
 
       <!-- TUTORIAL MODAL OVERLAY (Mounted by TutorialModal, Z-50) -->
       <div id="tutorial-container" class="relative z-50 pointer-events-auto"></div>
+
+      <!-- PILOT PROFILE MODAL OVERLAY (Mounted by PilotModal, Z-50) -->
+      <div id="pilot-modal-container" class="relative z-50 pointer-events-auto"></div>
 
       <!-- HARBOR MODAL OVERLAY (Mounted by HarborModal, Z-50) -->
       <div id="harbor-modal-container" class="relative z-50 pointer-events-auto"></div>

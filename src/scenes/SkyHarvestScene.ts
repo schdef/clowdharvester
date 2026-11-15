@@ -1,10 +1,10 @@
 import Phaser from 'phaser';
-import { ColorPalette } from '../gfx/ColorPalette';
+import { ColorPalette, ZoneType } from '../gfx/ColorPalette';
 import { AudioManager } from '../audio/AudioManager';
 import { CloudGrid, CondensatePocket } from '../core/CloudGrid';
 import { ProbePhysics, DrillHeadType } from '../core/ProbePhysics';
 import { ToolType, ScanToolType } from '../ui/ToolBar';
-import { GameState } from '../core/GameState';
+import { GameState, GameMode } from '../core/GameState';
 import { CloudBand, AuctionEngine } from '../core/AuctionEngine';
 import { LogisticsNet, PipeStatus } from '../core/LogisticsNet';
 import { ResourceType } from '../core/MarketEconomy';
@@ -13,6 +13,7 @@ import { CouncilModal } from '../ui/CouncilModal';
 import { SummaryModal } from '../ui/SummaryModal';
 import { HarborModal } from '../ui/HarborModal';
 import { TutorialModal } from '../ui/TutorialModal';
+import { PilotModal } from '../ui/PilotModal';
 
 interface CloudInstance {
   sprite: Phaser.GameObjects.Sprite;
@@ -74,10 +75,12 @@ export interface CustomPipe {
   startY: number;
   endX: number;
   endY: number;
-  sourceType: 'platform' | 'tank' | 'pocket' | 'balloon';
-  targetType: 'platform' | 'tank' | 'pocket' | 'balloon';
+  sourceType: 'platform' | 'tank' | 'pocket' | 'balloon' | 'station';
+  targetType: 'platform' | 'tank' | 'pocket' | 'balloon' | 'station';
   sourcePocketId?: string;
   targetPocketId?: string;
+  targetStationId?: 'aero' | 'guild';
+  sourceStationId?: 'aero' | 'guild';
   flowTimer: number;
 }
 
@@ -87,6 +90,36 @@ export interface CustomBalloon {
   y: number;
   capacity: number;
   bobPhase: number;
+}
+
+export interface AerialTradeStation {
+  id: 'aero' | 'guild';
+  nameKey: string;
+  icon: string;
+  x: number;
+  y: number;
+  baseY: number;
+  dockX: number;
+  dockY: number;
+  basePrice: number;
+  currentPrice: number;
+  previousPrice: number;
+  trend: 'up' | 'down' | 'steady';
+  priceTimer: number;
+  nameText?: Phaser.GameObjects.Text;
+  priceBadgeText?: Phaser.GameObjects.Text;
+}
+
+export interface RivalDrone {
+  x: number;
+  y: number;
+  targetX: number;
+  targetY: number;
+  speed: number;
+  scanRadius: number;
+  scanTimer: number;
+  pulsePhase: number;
+  scanCooldown: number;
 }
 
 export interface SkyRival {
@@ -110,9 +143,28 @@ export interface SkyRival {
   decisionCooldown: number;
   nameText?: Phaser.GameObjects.Text;
   counterText?: Phaser.GameObjects.Text;
+  knownPocketIds: Set<string>;
+  drone: RivalDrone;
 }
 
 export class SkyHarvestScene extends Phaser.Scene {
+  // Game Mode: 'solo' (default) vs 'arena'
+  private gameMode: GameMode = 'solo';
+
+  // Zone Challenge Left HUD
+  private zoneChallengeContainer: Phaser.GameObjects.Container | null = null;
+  private zoneChallengeCardBg!: Phaser.GameObjects.Graphics;
+  private zoneChallengeTitleText!: Phaser.GameObjects.Text;
+  private zoneChallengeDensityText!: Phaser.GameObjects.Text;
+  private zoneChallengeHeadText!: Phaser.GameObjects.Text;
+  private zoneChallengeStatusText!: Phaser.GameObjects.Text;
+  private zoneChallengeDepthText!: Phaser.GameObjects.Text;
+
+  // Resistance Banner Cooldown & Layer Feedback
+  private lastResistanceBannerTimer = 0;
+  private lastResistanceZone: string | null = null;
+  private ambientStormTimer = 0;
+
   // Core Simulation
   private cloudGrid!: CloudGrid;
   private logisticsNet: LogisticsNet = new LogisticsNet();
@@ -123,11 +175,21 @@ export class SkyHarvestScene extends Phaser.Scene {
   // Interactive Logistics (Slot 3: Rohr & Slot 4: Speicher)
   private customPipes: CustomPipe[] = [];
   private customBalloons: CustomBalloon[] = [];
-  private pipeDragStart: { x: number; y: number; type: 'platform' | 'tank' | 'pocket' | 'balloon'; pocketId?: string } | null = null;
+  private pipeDragStart: { x: number; y: number; type: 'platform' | 'tank' | 'pocket' | 'balloon' | 'station'; pocketId?: string; stationId?: 'aero' | 'guild' } | null = null;
   private isBuildingPipe = false;
   private pointerCurrentX = 0;
   private pointerCurrentY = 0;
   private logisticsInteractiveGraphics!: Phaser.GameObjects.Graphics;
+
+  // Aerial Trade Stations (Aero-Syndikat & Sky-Gilde)
+  private aerialStations: AerialTradeStation[] = [];
+  private aerialStationsGraphics!: Phaser.GameObjects.Graphics;
+  private stationCreditAccumulator: Record<'aero' | 'guild', number> = { aero: 0, guild: 0 };
+  private lastSaleChimeTimer = 0;
+
+  // Scan Guide Banner (Slot 1: Scan)
+  private scanGuideContainer: Phaser.GameObjects.Container | null = null;
+  private scanGuideText: Phaser.GameObjects.Text | null = null;
 
   // Sky Arena - KI-Rivalen
   private skyRivals: SkyRival[] = [];
@@ -225,6 +287,9 @@ export class SkyHarvestScene extends Phaser.Scene {
     if (rightSidebar) rightSidebar.style.display = '';
     if (mobileDock) mobileDock.style.display = '';
 
+    // Initialize Game Mode from GameState
+    this.gameMode = GameState.getInstance().getGameMode();
+
     // 1. Initialize Simulation Model with custom pockets from active cloud band if present
     const customPockets = this.activeBand?.actualData.pockets;
     this.cloudGrid = new CloudGrid(customPockets, width, height);
@@ -295,6 +360,17 @@ export class SkyHarvestScene extends Phaser.Scene {
     // 10f. Cloud Replenishment & Platform Relocation Action Banner
     this.createReplenishBanner(width);
 
+    // 10g. Aerial Trade Stations (Aero-Syndikat & Sky-Gilde)
+    this.aerialStationsGraphics = this.add.graphics();
+    this.aerialStationsGraphics.setDepth(14);
+    this.initAerialStations(width, height);
+
+    // 10h. Scan Guide Floating Banner (Slot 1: Scan)
+    this.createScanGuideBanner(width);
+
+    // 10i. Zonen-Herausforderungs-Anzeige am linken Rand
+    this.createZoneChallengeHUD(width, height);
+
     // 11. Interactive Drill Probe Head
     this.createProbeHead();
 
@@ -343,6 +419,20 @@ export class SkyHarvestScene extends Phaser.Scene {
         this.replenishBannerContainer.destroy();
         this.replenishBannerContainer = null;
       }
+      this.aerialStations.forEach((s) => {
+        s.nameText?.destroy();
+        s.priceBadgeText?.destroy();
+      });
+      this.aerialStations = [];
+      if (this.scanGuideContainer) {
+        this.scanGuideContainer.destroy();
+        this.scanGuideContainer = null;
+        this.scanGuideText = null;
+      }
+      if (this.zoneChallengeContainer) {
+        this.zoneChallengeContainer.destroy();
+        this.zoneChallengeContainer = null;
+      }
     });
 
     // Initial display updates
@@ -364,6 +454,16 @@ export class SkyHarvestScene extends Phaser.Scene {
       this.startHintText.setText(t('harvest.startHint'));
     }
     this.createReplenishBanner(width);
+    this.updateScanGuideText();
+    for (const station of this.aerialStations) {
+      if (station.nameText) {
+        station.nameText.setText(`${station.icon} ${t(station.nameKey)}`);
+      }
+      if (station.priceBadgeText) {
+        const trendSymbol = station.trend === 'up' ? '↗' : station.trend === 'down' ? '↘' : '→';
+        station.priceBadgeText.setText(`${Math.round(station.currentPrice)} ${t('aerialMarket.livePriceUnit')} ${trendSymbol}`);
+      }
+    }
     for (const rival of this.skyRivals) {
       if (rival.nameText) {
         rival.nameText.setText(`${rival.symbol} ${t(rival.nameKey)}`);
@@ -443,6 +543,23 @@ export class SkyHarvestScene extends Phaser.Scene {
       this.replenishBannerContainer.setPosition(width / 2, 140);
     }
 
+    if (this.scanGuideContainer) {
+      this.scanGuideContainer.setPosition(width / 2, 118);
+    }
+
+    const leftY = Math.min(320, Math.max(220, height * 0.35));
+    const rightY = Math.min(350, Math.max(250, height * 0.38));
+    if (this.aerialStations[0]) {
+      this.aerialStations[0].x = 58;
+      this.aerialStations[0].baseY = leftY;
+      this.aerialStations[0].dockX = 96;
+    }
+    if (this.aerialStations[1]) {
+      this.aerialStations[1].x = width - 58;
+      this.aerialStations[1].baseY = rightY;
+      this.aerialStations[1].dockX = width - 96;
+    }
+
     // Keep probe inside screen bounds
     this.probeCurrentX = Phaser.Math.Clamp(this.probeCurrentX, 30, width - 30);
     this.probeCurrentY = Phaser.Math.Clamp(this.probeCurrentY, 105, height - 90);
@@ -511,6 +628,27 @@ export class SkyHarvestScene extends Phaser.Scene {
     );
     this.skyBackgroundGraphics.fillRect(0, 0, width, highHeight);
 
+    // Kristalline Eisschollen-Texturen in Hochzone
+    this.skyBackgroundGraphics.lineStyle(1.2, 0x7DD3FC, 0.22);
+    const iceFloeCount = Math.max(6, Math.floor(width / 160));
+    for (let i = 0; i < iceFloeCount; i++) {
+      const ix = width * ((i + 0.5) / iceFloeCount) + ((i % 2 === 0) ? 14 : -14);
+      const iy = highHeight * (0.18 + (i % 3) * 0.26);
+      this.skyBackgroundGraphics.fillStyle(0xBAE6FD, 0.08);
+      this.skyBackgroundGraphics.beginPath();
+      this.skyBackgroundGraphics.moveTo(ix - 24, iy);
+      this.skyBackgroundGraphics.lineTo(ix - 8, iy - 14);
+      this.skyBackgroundGraphics.lineTo(ix + 18, iy - 8);
+      this.skyBackgroundGraphics.lineTo(ix + 26, iy + 10);
+      this.skyBackgroundGraphics.lineTo(ix + 4, iy + 16);
+      this.skyBackgroundGraphics.closePath();
+      this.skyBackgroundGraphics.fillPath();
+      this.skyBackgroundGraphics.strokePath();
+
+      // Sharp crystalline fracture line through floe
+      this.skyBackgroundGraphics.lineBetween(ix - 8, iy - 14, ix + 4, iy + 16);
+    }
+
     // Layer 2: Mid Zone (highHeight to midEnd)
     this.skyBackgroundGraphics.fillGradientStyle(
       0x1E2B45,
@@ -521,6 +659,18 @@ export class SkyHarvestScene extends Phaser.Scene {
     );
     this.skyBackgroundGraphics.fillRect(0, highHeight, width, midHeight);
 
+    // Dichte fließende Wasserdampf-Wirbel in Mittelzone
+    this.skyBackgroundGraphics.lineStyle(1.4, 0x60A5FA, 0.16);
+    for (let i = 0; i < 4; i++) {
+      const wy = highHeight + midHeight * (0.2 + i * 0.22);
+      this.skyBackgroundGraphics.beginPath();
+      this.skyBackgroundGraphics.moveTo(0, wy);
+      this.skyBackgroundGraphics.lineTo(width * 0.3, wy + 16);
+      this.skyBackgroundGraphics.lineTo(width * 0.7, wy - 16);
+      this.skyBackgroundGraphics.lineTo(width, wy + 8);
+      this.skyBackgroundGraphics.strokePath();
+    }
+
     // Layer 3: Low Zone (midEnd to height)
     this.skyBackgroundGraphics.fillGradientStyle(
       0x241C48,
@@ -530,6 +680,17 @@ export class SkyHarvestScene extends Phaser.Scene {
       1
     );
     this.skyBackgroundGraphics.fillRect(0, midEnd, width, height - midEnd);
+
+    // Dunkle Cumulonimbus-Wolkenberge in Tiefzone
+    this.skyBackgroundGraphics.fillStyle(0x1E1B4B, 0.4);
+    const stormBands = Math.max(4, Math.floor(width / 220));
+    for (let i = 0; i < stormBands; i++) {
+      const cx = width * ((i + 0.5) / stormBands);
+      const cy = midEnd + (height - midEnd) * 0.45;
+      this.skyBackgroundGraphics.fillCircle(cx, cy, 70);
+      this.skyBackgroundGraphics.fillCircle(cx + 40, cy + 12, 55);
+      this.skyBackgroundGraphics.fillCircle(cx - 35, cy + 18, 48);
+    }
 
     // Subtle Zone Boundary Lines spanning full width
     this.skyBoundaryGraphics.lineStyle(1, 0x38B2AC, 0.25);
@@ -753,10 +914,15 @@ export class SkyHarvestScene extends Phaser.Scene {
     this.game.events.on('drillhead:change', (head: DrillHeadType) => {
       this.activeDrillHead = head;
       this.updateProbeTexture();
+      this.updateZoneChallengeHUD();
     });
 
     this.game.events.on('scantool:change', (scanTool: ScanToolType) => {
       this.activeScanTool = scanTool;
+    });
+
+    this.game.events.on('gamemode:change', (mode: GameMode) => {
+      this.setGameMode(mode);
     });
   }
 
@@ -772,6 +938,12 @@ export class SkyHarvestScene extends Phaser.Scene {
     if (tool === 'sell') {
       this.game.events.emit('harbor:open', 'market');
     }
+    if (this.scanGuideContainer) {
+      this.scanGuideContainer.setVisible(tool === 'scan');
+      if (tool === 'scan') {
+        this.updateScanGuideText();
+      }
+    }
   }
 
   public getActiveTool(): ToolType {
@@ -781,10 +953,12 @@ export class SkyHarvestScene extends Phaser.Scene {
   public setDrillHead(head: DrillHeadType): void {
     this.activeDrillHead = head;
     this.updateProbeTexture();
+    this.updateZoneChallengeHUD();
   }
 
   public setScanTool(scanTool: ScanToolType): void {
     this.activeScanTool = scanTool;
+    this.updateScanGuideText();
   }
 
   private initPocketLabels(): void {
@@ -926,6 +1100,20 @@ export class SkyHarvestScene extends Phaser.Scene {
   public handlePipePointerDown(x: number, y: number): void {
     const height = this.cameras.main.height;
 
+    // Check if clicked near Left Station (Aero-Syndikat)
+    if (this.aerialStations[0] && Math.hypot(this.aerialStations[0].x - x, this.aerialStations[0].y - y) < 60) {
+      this.pipeDragStart = { x: this.aerialStations[0].dockX, y: this.aerialStations[0].dockY, type: 'station', stationId: 'aero' };
+      this.isBuildingPipe = true;
+      return;
+    }
+
+    // Check if clicked near Right Station (Sky-Gilde)
+    if (this.aerialStations[1] && Math.hypot(this.aerialStations[1].x - x, this.aerialStations[1].y - y) < 60) {
+      this.pipeDragStart = { x: this.aerialStations[1].dockX, y: this.aerialStations[1].dockY, type: 'station', stationId: 'guild' };
+      this.isBuildingPipe = true;
+      return;
+    }
+
     // Check if clicked on/near a pocket
     const nearestPocket = this.cloudGrid?.getPockets().find((p) => Math.hypot(p.x - x, p.y - y) < Math.max(35, p.radius + 12));
     if (nearestPocket) {
@@ -968,21 +1156,35 @@ export class SkyHarvestScene extends Phaser.Scene {
 
     let targetX = x;
     let targetY = y;
-    let targetType: 'platform' | 'tank' | 'pocket' | 'balloon' = 'pocket';
+    let targetType: 'platform' | 'tank' | 'pocket' | 'balloon' | 'station' = 'pocket';
     let targetPocketId: string | undefined = undefined;
+    let targetStationId: 'aero' | 'guild' | undefined = undefined;
+    const sourceStationId = this.pipeDragStart.stationId;
 
-    const nearestPocket = this.cloudGrid?.getPockets().find((p) => Math.hypot(p.x - x, p.y - y) < Math.max(35, p.radius + 12));
-    if (nearestPocket) {
-      targetX = nearestPocket.x;
-      targetY = nearestPocket.y;
-      targetType = 'pocket';
-      targetPocketId = nearestPocket.id;
+    if (this.aerialStations[0] && Math.hypot(this.aerialStations[0].x - x, this.aerialStations[0].y - y) < 65) {
+      targetX = this.aerialStations[0].dockX;
+      targetY = this.aerialStations[0].dockY;
+      targetType = 'station';
+      targetStationId = 'aero';
+    } else if (this.aerialStations[1] && Math.hypot(this.aerialStations[1].x - x, this.aerialStations[1].y - y) < 65) {
+      targetX = this.aerialStations[1].dockX;
+      targetY = this.aerialStations[1].dockY;
+      targetType = 'station';
+      targetStationId = 'guild';
     } else {
-      const nearestBalloon = this.customBalloons.find((b) => Math.hypot(b.x - x, b.y - y) < 30);
-      if (nearestBalloon) {
-        targetX = nearestBalloon.x;
-        targetY = nearestBalloon.y;
-        targetType = 'balloon';
+      const nearestPocket = this.cloudGrid?.getPockets().find((p) => Math.hypot(p.x - x, p.y - y) < Math.max(35, p.radius + 12));
+      if (nearestPocket) {
+        targetX = nearestPocket.x;
+        targetY = nearestPocket.y;
+        targetType = 'pocket';
+        targetPocketId = nearestPocket.id;
+      } else {
+        const nearestBalloon = this.customBalloons.find((b) => Math.hypot(b.x - x, b.y - y) < 30);
+        if (nearestBalloon) {
+          targetX = nearestBalloon.x;
+          targetY = nearestBalloon.y;
+          targetType = 'balloon';
+        }
       }
     }
 
@@ -994,7 +1196,9 @@ export class SkyHarvestScene extends Phaser.Scene {
       this.pipeDragStart.type,
       targetType,
       this.pipeDragStart.pocketId,
-      targetPocketId
+      targetPocketId,
+      targetStationId,
+      sourceStationId
     );
 
     this.pipeDragStart = null;
@@ -1006,10 +1210,12 @@ export class SkyHarvestScene extends Phaser.Scene {
     startY: number,
     endX: number,
     endY: number,
-    sourceType: 'platform' | 'tank' | 'pocket' | 'balloon' = 'platform',
-    targetType: 'platform' | 'tank' | 'pocket' | 'balloon' = 'pocket',
+    sourceType: 'platform' | 'tank' | 'pocket' | 'balloon' | 'station' = 'platform',
+    targetType: 'platform' | 'tank' | 'pocket' | 'balloon' | 'station' = 'pocket',
     sourcePocketId?: string,
-    targetPocketId?: string
+    targetPocketId?: string,
+    targetStationId?: 'aero' | 'guild',
+    sourceStationId?: 'aero' | 'guild'
   ): boolean {
     const gs = GameState.getInstance();
     const pipeCost = 30;
@@ -1033,10 +1239,17 @@ export class SkyHarvestScene extends Phaser.Scene {
       targetType,
       sourcePocketId,
       targetPocketId,
+      targetStationId,
+      sourceStationId,
       flowTimer: 0,
     });
 
-    this.showScanBanner(t('logisticsTool.pipeConnected'), (startY + endY) / 2, '#67E8F9', '#083344EE');
+    if (targetType === 'station' || sourceType === 'station') {
+      AudioManager.getInstance().playAuctionBell();
+      this.showScanBanner(t('aerialMarket.stationDocked'), (startY + endY) / 2, '#34D399', '#064E3BEE');
+    } else {
+      this.showScanBanner(t('logisticsTool.pipeConnected'), (startY + endY) / 2, '#67E8F9', '#083344EE');
+    }
     return true;
   }
 
@@ -1087,6 +1300,29 @@ export class SkyHarvestScene extends Phaser.Scene {
 
   public getSkyRivals(): ReadonlyArray<SkyRival> {
     return this.skyRivals;
+  }
+
+  public setGameMode(mode: GameMode): void {
+    this.gameMode = mode;
+    const isSolo = mode === 'solo';
+    for (const rival of this.skyRivals) {
+      rival.nameText?.setVisible(!isSolo);
+      rival.counterText?.setVisible(!isSolo);
+      if (isSolo) {
+        rival.isDrilling = false;
+        rival.targetPocketId = null;
+        rival.cableT = 0;
+      }
+    }
+    if (isSolo) {
+      this.rivalsGraphics?.clear();
+      this.rivalCablesGraphics?.clear();
+      this.rivalParticles = [];
+    }
+  }
+
+  public getGameMode(): GameMode {
+    return this.gameMode;
   }
 
   public getReplenishBannerVisible(): boolean {
@@ -1221,7 +1457,7 @@ export class SkyHarvestScene extends Phaser.Scene {
   }
 
   public update(_time: number, delta: number): void {
-    const isModalOpen = CouncilModal.getInstance().isOpen() || SummaryModal.getInstance().isOpen() || HarborModal.getInstance().isOpen() || TutorialModal.getInstance().isOpen();
+    const isModalOpen = CouncilModal.getInstance().isOpen() || SummaryModal.getInstance().isOpen() || HarborModal.getInstance().isOpen() || TutorialModal.getInstance().isOpen() || PilotModal.getInstance().getIsOpen();
     const gameSpeed = isModalOpen ? 0 : GameState.getInstance().getGameSpeed();
     if (gameSpeed <= 0) {
       return;
@@ -1267,8 +1503,30 @@ export class SkyHarvestScene extends Phaser.Scene {
     this.updateSkyRivals(dt);
     this.renderSkyRivalsGraphics();
 
-    // 7e. Cloud Replenishment Action Banner
+    // 7e. Update Zone Challenge HUD & Banner Timer
+    this.updateZoneChallengeHUD();
+    if (this.lastResistanceBannerTimer > 0) {
+      this.lastResistanceBannerTimer -= dt;
+    }
+
+    // Ambient lightning in Tiefzone (Sturm)
+    this.ambientStormTimer += dt;
+    if (this.ambientStormTimer >= 4.0) {
+      this.ambientStormTimer = 0;
+      const height = this.cameras.main.height;
+      const midEnd = height * 0.68;
+      const lx = width * (0.15 + Math.random() * 0.70);
+      const ly = midEnd + (height - midEnd) * (0.2 + Math.random() * 0.5);
+      this.fxGraphics.lineStyle(1.5, 0xFDE047, 0.85);
+      this.fxGraphics.lineBetween(lx, ly, lx + (Math.random() - 0.5) * 36, ly + 26);
+    }
+
+    // 7f. Cloud Replenishment Action Banner
     this.updateReplenishBanner();
+
+    // 7f. Update & Render Aerial Market Trade Stations & Continuous Pipeline Sales
+    this.updateAerialMarket(dt);
+    this.renderAerialStations();
 
     // 8. Render Sonar Waves & HUD
     this.renderSonarFX(dt);
@@ -1295,12 +1553,9 @@ export class SkyHarvestScene extends Phaser.Scene {
       this.weekTimer = 0;
       GameState.getInstance().setWeekTimer(0);
       const gs = GameState.getInstance();
-      const prevWeek = gs.getData().week;
-      gs.advanceWeek();
-      const newWeek = gs.getData().week;
-      this.currentWeek = newWeek;
-      this.updateHeaderLabels();
-      this.updateTankDisplay();
+      const prevWeek = this.currentWeek;
+      this.advanceWeekAndReplenish();
+      const newWeek = this.currentWeek;
 
       // Trigger Council Session in Week 4, 8, and 12
       if (newWeek === 4 || newWeek === 8 || newWeek === 12) {
@@ -1351,6 +1606,9 @@ export class SkyHarvestScene extends Phaser.Scene {
             : ColorPalette.lowZone.glowGoldNum
         );
         this.cuttingEmitter.emitParticleAt(this.probeCurrentX, this.probeCurrentY + 16, 1);
+
+        // Layer Challenge Visual Feedback & Drill Head Response
+        this.renderLayerDrillFeedback(currentZone, isMatching, dt);
       }
     } else if (dy < -1.5) {
       // Reeling in upwards (fast retrieval)
@@ -1365,7 +1623,7 @@ export class SkyHarvestScene extends Phaser.Scene {
     // Update Probe Head Sprite
     this.probeHead.setPosition(this.probeCurrentX, this.probeCurrentY);
     const wobbleAngle = isDrilling
-      ? Math.sin(this.timeElapsed * 24) * 3.5
+      ? Math.sin(this.timeElapsed * 24) * (isMatching ? 3.5 : 7.0)
       : Math.sin(this.timeElapsed * 3) * 1.5;
     this.probeHead.setAngle(wobbleAngle);
 
@@ -2051,6 +2309,8 @@ export class SkyHarvestScene extends Phaser.Scene {
       r.counterText?.destroy();
     });
 
+    const isSolo = this.gameMode === 'solo';
+
     this.skyRivals = [
       {
         id: 'daredevil',
@@ -2071,6 +2331,18 @@ export class SkyHarvestScene extends Phaser.Scene {
         isDrilling: false,
         drillTimer: 0,
         decisionCooldown: 3.5,
+        knownPocketIds: new Set<string>(),
+        drone: {
+          x: width * 0.16,
+          y: 125,
+          targetX: width * 0.25,
+          targetY: 340,
+          speed: 85,
+          scanRadius: 65,
+          scanTimer: 0,
+          pulsePhase: 0,
+          scanCooldown: 1.5,
+        },
       },
       {
         id: 'calculator',
@@ -2091,6 +2363,18 @@ export class SkyHarvestScene extends Phaser.Scene {
         isDrilling: false,
         drillTimer: 0,
         decisionCooldown: 5.0,
+        knownPocketIds: new Set<string>(),
+        drone: {
+          x: width * 0.84,
+          y: 130,
+          targetX: width * 0.70,
+          targetY: 280,
+          speed: 70,
+          scanRadius: 65,
+          scanTimer: 0,
+          pulsePhase: 1.5,
+          scanCooldown: 2.0,
+        },
       },
       {
         id: 'tracker',
@@ -2111,6 +2395,18 @@ export class SkyHarvestScene extends Phaser.Scene {
         isDrilling: false,
         drillTimer: 0,
         decisionCooldown: 7.0,
+        knownPocketIds: new Set<string>(),
+        drone: {
+          x: width * 0.68,
+          y: 140,
+          targetX: width * 0.50,
+          targetY: 360,
+          speed: 78,
+          scanRadius: 85,
+          scanTimer: 0,
+          pulsePhase: 3.0,
+          scanCooldown: 1.8,
+        },
       },
     ];
 
@@ -2122,7 +2418,7 @@ export class SkyHarvestScene extends Phaser.Scene {
         color: '#F8FAFC',
         stroke: '#0F172A',
         strokeThickness: 3,
-      }).setOrigin(0.5).setDepth(11);
+      }).setOrigin(0.5).setDepth(11).setVisible(!isSolo);
 
       rival.counterText = this.add.text(rival.x, rival.y - 14, `0 E`, {
         fontFamily: 'monospace',
@@ -2130,15 +2426,31 @@ export class SkyHarvestScene extends Phaser.Scene {
         color: '#FDE047',
         stroke: '#0F172A',
         strokeThickness: 2,
-      }).setOrigin(0.5).setDepth(11);
+      }).setOrigin(0.5).setDepth(11).setVisible(!isSolo);
     }
   }
 
   /**
-   * Updates autonomous AI rival drilling, decision making, and tug-of-war contests
+   * Updates autonomous AI rival drilling, decision making, and fair drone exploration
    */
   private updateSkyRivals(dt: number): void {
     const width = this.cameras.main.width;
+    const height = this.cameras.main.height;
+
+    if (this.gameMode === 'solo') {
+      // Standard Mode: Rivals harvest in their own private cloud bands in the background.
+      // They do NOT appear on player's canvas or compete for player's grid pockets!
+      for (const rival of this.skyRivals) {
+        const baseRate = rival.id === 'daredevil' ? 3.4 : rival.id === 'calculator' ? 3.0 : 2.7;
+        const harvested = baseRate * dt * (0.85 + Math.sin(this.timeElapsed * 0.8 + rival.baseXRatio * 5) * 0.15);
+        rival.totalHarvested += harvested;
+        if (rival.counterText) {
+          rival.counterText.setText(`${Math.floor(rival.totalHarvested)} E`);
+        }
+      }
+      return;
+    }
+
     if (this.lastContestedAlertTimer > 0) {
       this.lastContestedAlertTimer -= dt;
     }
@@ -2149,18 +2461,61 @@ export class SkyHarvestScene extends Phaser.Scene {
       rival.y = rival.baseY + Math.sin(this.timeElapsed * 1.6 + idx * 1.7) * 3;
 
       if (rival.nameText) {
+        rival.nameText.setVisible(true);
         rival.nameText.setPosition(rival.x, rival.y - 26);
       }
       if (rival.counterText) {
+        rival.counterText.setVisible(true);
         rival.counterText.setPosition(rival.x, rival.y - 14);
         rival.counterText.setText(`${Math.floor(rival.totalHarvested)} E`);
       }
 
-      // Autonomous drilling decision AI
+      // Update Fair AI Scan Drone
+      const drone = rival.drone;
+      drone.pulsePhase += dt * 3.5;
+
+      const ddx = drone.targetX - drone.x;
+      const ddy = drone.targetY - drone.y;
+      const dDist = Math.hypot(ddx, ddy);
+
+      if (dDist < 14) {
+        // Pick new patrol waypoint in cloud layers
+        const targetZoneY = rival.id === 'daredevil'
+          ? height * (0.42 + Math.random() * 0.45) // deeper/riskier
+          : rival.id === 'calculator'
+          ? height * (0.22 + Math.random() * 0.48) // methodical
+          : height * (0.18 + Math.random() * 0.65); // broad sweep
+
+        drone.targetX = width * (0.12 + Math.random() * 0.76);
+        drone.targetY = targetZoneY;
+      } else {
+        const step = Math.min(dDist, drone.speed * dt);
+        drone.x += (ddx / dDist) * step;
+        drone.y += (ddy / dDist) * step;
+      }
+
+      // Drone scans nearby pockets in scanRadius
+      const pockets = this.cloudGrid?.getPockets() ?? [];
+      for (const pocket of pockets) {
+        if (pocket.isDepleted) continue;
+        const pDist = Math.hypot(pocket.x - drone.x, pocket.y - drone.y);
+        if (pDist <= drone.scanRadius && !rival.knownPocketIds.has(pocket.id)) {
+          // Drone detects pocket! Added to known pockets without god-mode
+          rival.knownPocketIds.add(pocket.id);
+          drone.scanTimer = 1.0;
+        }
+      }
+
+      // Autonomous drilling decision AI (FAIR: ONLY known or revealed pockets!)
       if (!rival.isDrilling) {
         rival.decisionCooldown -= dt;
         if (rival.decisionCooldown <= 0) {
-          const candidates = this.cloudGrid?.getPockets().filter((p) => !p.isDepleted && p.currentVolume > 2) ?? [];
+          const candidates = pockets.filter((p) =>
+            !p.isDepleted &&
+            p.currentVolume > 2 &&
+            (rival.knownPocketIds.has(p.id) || p.discoveryState === 'revealed')
+          );
+
           if (candidates.length > 0) {
             let target = candidates[0];
             if (rival.id === 'daredevil') {
@@ -2181,7 +2536,7 @@ export class SkyHarvestScene extends Phaser.Scene {
             rival.isDrilling = true;
             rival.drillTimer = 7.0 + Math.random() * 5.0;
           } else {
-            rival.decisionCooldown = 4.0;
+            rival.decisionCooldown = 3.5;
           }
         }
       } else {
@@ -2262,12 +2617,16 @@ export class SkyHarvestScene extends Phaser.Scene {
   }
 
   /**
-   * Renders the visible AI Rival Harvester Platforms, cables, and extraction particles
+   * Renders the visible AI Rival Harvester Platforms, cables, extraction particles, and Scan Drones
    */
   private renderSkyRivalsGraphics(): void {
     if (!this.rivalsGraphics || !this.rivalCablesGraphics) return;
     this.rivalsGraphics.clear();
     this.rivalCablesGraphics.clear();
+
+    if (this.gameMode === 'solo') {
+      return;
+    }
 
     for (let idx = 0; idx < this.skyRivals.length; idx++) {
       const rival = this.skyRivals[idx];
@@ -2350,6 +2709,29 @@ export class SkyHarvestScene extends Phaser.Scene {
         this.rivalsGraphics.arc(rx, ry, 6, radarAngle, radarAngle + Math.PI * 0.8);
         this.rivalsGraphics.stroke();
       }
+
+      // Render Fair AI Scan Drone
+      const drone = rival.drone;
+      this.rivalsGraphics.lineStyle(1.2, rival.accentColor, 0.35 + Math.sin(drone.pulsePhase) * 0.15);
+      this.rivalsGraphics.strokeCircle(drone.x, drone.y, drone.scanRadius);
+      this.rivalsGraphics.fillStyle(rival.accentColor, 0.06 + Math.sin(drone.pulsePhase) * 0.03);
+      this.rivalsGraphics.fillCircle(drone.x, drone.y, drone.scanRadius);
+
+      // Drone Chassis
+      this.rivalsGraphics.fillStyle(0x0F172A, 0.95);
+      this.rivalsGraphics.fillRoundedRect(drone.x - 7, drone.y - 4, 14, 8, 2);
+      this.rivalsGraphics.lineStyle(1.2, rival.accentColor, 0.9);
+      this.rivalsGraphics.strokeRoundedRect(drone.x - 7, drone.y - 4, 14, 8, 2);
+
+      // Drone rotor arms
+      const rotorSwing = Math.sin(this.timeElapsed * 28) * 4;
+      this.rivalsGraphics.lineStyle(1.0, 0x94A3B8, 0.85);
+      this.rivalsGraphics.lineBetween(drone.x - 8, drone.y - 4, drone.x - 8 + rotorSwing, drone.y - 4);
+      this.rivalsGraphics.lineBetween(drone.x + 8, drone.y - 4, drone.x + 8 + rotorSwing, drone.y - 4);
+
+      // Drone Sensor Beacon
+      this.rivalsGraphics.fillStyle(rival.accentColor, 1.0);
+      this.rivalsGraphics.fillCircle(drone.x, drone.y, 2);
     }
 
     // Render ascending particles along rival cables
@@ -2395,11 +2777,12 @@ export class SkyHarvestScene extends Phaser.Scene {
       this.logisticsInteractiveGraphics.fillCircle(p.endX, p.endY, 4);
 
       // Flowing droplets along pipe
-      for (let dot = 0; dot < 2; dot++) {
-        const tVal = (this.timeElapsed * 1.4 + i * 0.3 + dot * 0.5) % 1.0;
+      const isStationPipe = !!(p.targetStationId || p.sourceStationId);
+      for (let dot = 0; dot < (isStationPipe ? 3 : 2); dot++) {
+        const tVal = (this.timeElapsed * (isStationPipe ? 1.8 : 1.4) + i * 0.3 + dot * 0.35) % 1.0;
         const pt = curve.getPoint(tVal);
-        this.logisticsInteractiveGraphics.fillStyle(0x67E8F9, 0.9);
-        this.logisticsInteractiveGraphics.fillCircle(pt.x, pt.y, 2.5);
+        this.logisticsInteractiveGraphics.fillStyle(isStationPipe ? 0x34D399 : 0x67E8F9, 0.95);
+        this.logisticsInteractiveGraphics.fillCircle(pt.x, pt.y, isStationPipe ? 3.0 : 2.5);
       }
     }
 
@@ -2457,12 +2840,21 @@ export class SkyHarvestScene extends Phaser.Scene {
       if (this.isBuildingPipe && this.pipeDragStart) {
         const sx = this.pipeDragStart.x;
         const sy = this.pipeDragStart.y;
-        const midX = (sx + px) / 2;
-        const midY = (sy + py) / 2 + 16;
+        let previewTargetX = px;
+        let previewTargetY = py;
+        if (this.aerialStations[0] && Math.hypot(this.aerialStations[0].x - px, this.aerialStations[0].y - py) < 65) {
+          previewTargetX = this.aerialStations[0].dockX;
+          previewTargetY = this.aerialStations[0].dockY;
+        } else if (this.aerialStations[1] && Math.hypot(this.aerialStations[1].x - px, this.aerialStations[1].y - py) < 65) {
+          previewTargetX = this.aerialStations[1].dockX;
+          previewTargetY = this.aerialStations[1].dockY;
+        }
+        const midX = (sx + previewTargetX) / 2;
+        const midY = (sy + previewTargetY) / 2 + 16;
         const curve = new Phaser.Curves.QuadraticBezier(
           new Phaser.Math.Vector2(sx, sy),
           new Phaser.Math.Vector2(midX, midY),
-          new Phaser.Math.Vector2(px, py)
+          new Phaser.Math.Vector2(previewTargetX, previewTargetY)
         );
 
         const pts = curve.getPoints(12);
@@ -2488,6 +2880,39 @@ export class SkyHarvestScene extends Phaser.Scene {
 
       this.logisticsInteractiveGraphics.fillStyle(0xF59E0B, 0.8);
       this.logisticsInteractiveGraphics.fillRect(gx - 3, gy + 14, 6, 4);
+    }
+
+    // 5. High-Visibility Sonar Reticle for Slot 1 (Scan)
+    if (this.activeTool === 'scan') {
+      const rx = this.pointerCurrentX;
+      const ry = this.pointerCurrentY;
+      const pulse = 0.8 + Math.sin(this.timeElapsed * 5) * 0.2;
+
+      // Outer targeting ring
+      this.logisticsInteractiveGraphics.lineStyle(1.8, 0x38BDF8, 0.9 * pulse);
+      this.logisticsInteractiveGraphics.strokeCircle(rx, ry, 22);
+
+      // Inner reticle ring
+      this.logisticsInteractiveGraphics.lineStyle(1.2, 0x7DD3FC, 0.7);
+      this.logisticsInteractiveGraphics.strokeCircle(rx, ry, 9);
+
+      // Center dot
+      this.logisticsInteractiveGraphics.fillStyle(0x38BDF8, 0.95);
+      this.logisticsInteractiveGraphics.fillCircle(rx, ry, 2);
+
+      // Crosshair arms with center gap
+      this.logisticsInteractiveGraphics.lineStyle(1.5, 0x38BDF8, 0.85);
+      this.logisticsInteractiveGraphics.lineBetween(rx - 32, ry, rx - 14, ry);
+      this.logisticsInteractiveGraphics.lineBetween(rx + 14, ry, rx + 32, ry);
+      this.logisticsInteractiveGraphics.lineBetween(rx, ry - 32, rx, ry - 14);
+      this.logisticsInteractiveGraphics.lineBetween(rx, ry + 14, rx, ry + 32);
+
+      // Rotating radar sweep tick
+      const sweepAngle = this.timeElapsed * 3;
+      const tx = rx + Math.cos(sweepAngle) * 22;
+      const ty = ry + Math.sin(sweepAngle) * 22;
+      this.logisticsInteractiveGraphics.fillStyle(0x38BDF8, 1.0);
+      this.logisticsInteractiveGraphics.fillCircle(tx, ty, 3);
     }
   }
 
@@ -2595,7 +3020,33 @@ export class SkyHarvestScene extends Phaser.Scene {
     this.updateHeaderLabels();
     this.updateTankDisplay();
 
-    // Trigger smooth horizontal parallax drift
+    const width = this.cameras?.main?.width || 540;
+
+    // 1. Reset all carved channels across CloudGrid (carveFactor = 0)
+    this.cloudGrid?.resetCarving();
+
+    // 2. Remove old sector pipe networks
+    this.customPipes = [];
+    this.pipeDragStart = null;
+    this.isBuildingPipe = false;
+
+    // 3. Soft reset probe back to platform winch
+    this.probeCurrentX = width / 2;
+    this.probeCurrentY = 160;
+    this.probeTargetX = width / 2;
+    this.probeTargetY = 160;
+    this.isDocked = false;
+    this.dockedPocket = null;
+
+    // 4. Update Aerial Market stations with fresh weekly prices
+    for (const station of this.aerialStations) {
+      station.previousPrice = station.currentPrice;
+      const shift = (Math.random() > 0.5 ? 1 : -1) * (1 + Math.floor(Math.random() * 3));
+      station.currentPrice = Phaser.Math.Clamp(station.basePrice + shift, 8, 28);
+      station.trend = station.currentPrice >= station.previousPrice ? 'up' : 'down';
+    }
+
+    // 5. Trigger smooth horizontal parallax drift and load new cloud band
     const newBand = AuctionEngine.createReplenishedBand(newWeek, gs.getData().season);
     gs.setActiveCloudBand(newBand);
     this.activeBand = newBand;
@@ -2653,5 +3104,527 @@ export class SkyHarvestScene extends Phaser.Scene {
 
     this.showScanBanner(t('cloudReplenish.relocated'), 140, '#FDE047', '#451A03EE');
     return true;
+  }
+
+  /**
+   * Floating Guide Banner for Slot 1 (Scan Tool)
+   */
+  private createScanGuideBanner(width: number): void {
+    if (this.scanGuideContainer) {
+      this.scanGuideContainer.destroy();
+      this.scanGuideContainer = null;
+      this.scanGuideText = null;
+    }
+
+    this.scanGuideContainer = this.add.container(width / 2, 118);
+    this.scanGuideContainer.setDepth(26);
+    this.scanGuideContainer.setVisible(this.activeTool === 'scan');
+
+    const bannerBg = this.add.graphics();
+    bannerBg.fillStyle(0x0F172A, 0.94);
+    bannerBg.fillRoundedRect(-180, -18, 360, 36, 18);
+    bannerBg.lineStyle(1.5, 0x38BDF8, 0.9);
+    bannerBg.strokeRoundedRect(-180, -18, 360, 36, 18);
+    this.scanGuideContainer.add(bannerBg);
+
+    this.scanGuideText = this.add.text(0, 0, this.getScanGuideText(), {
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: '12px',
+      color: '#38BDF8',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.scanGuideContainer.add(this.scanGuideText);
+
+    // Gently pulsing animation
+    if (this.tweens) {
+      this.tweens.add({
+        targets: this.scanGuideContainer,
+        y: 122,
+        duration: 800,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+    }
+  }
+
+  private getScanGuideText(): string {
+    if (this.activeScanTool === 'echo_drone') {
+      return t('scan.scanGuideBannerDrone');
+    }
+    if (this.activeScanTool === 'spectral_scan') {
+      return t('scan.scanGuideBannerSpectral');
+    }
+    return t('scan.scanGuideBanner');
+  }
+
+  public updateScanGuideText(): void {
+    if (this.scanGuideText) {
+      this.scanGuideText.setText(this.getScanGuideText());
+    }
+  }
+
+  /**
+   * Initializes the two Aerial Trade Stations (Aero-Syndikat & Sky-Gilde)
+   */
+  private initAerialStations(width: number, height: number): void {
+    const leftY = Math.min(320, Math.max(220, height * 0.35));
+    const rightY = Math.min(350, Math.max(250, height * 0.38));
+
+    this.aerialStations = [
+      {
+        id: 'aero',
+        nameKey: 'aerialMarket.aeroSyndicate',
+        icon: '🎈',
+        x: 58,
+        y: leftY,
+        baseY: leftY,
+        dockX: 96,
+        dockY: leftY + 8,
+        basePrice: 14,
+        currentPrice: 14,
+        previousPrice: 14,
+        trend: 'up',
+        priceTimer: 0,
+      },
+      {
+        id: 'guild',
+        nameKey: 'aerialMarket.skyGuild',
+        icon: '🚢',
+        x: width - 58,
+        y: rightY,
+        baseY: rightY,
+        dockX: width - 96,
+        dockY: rightY + 8,
+        basePrice: 11,
+        currentPrice: 11,
+        previousPrice: 11,
+        trend: 'down',
+        priceTimer: 0,
+      },
+    ];
+
+    this.aerialStations.forEach((station) => {
+      const isLeft = station.id === 'aero';
+      const name = this.add.text(station.x, station.y - 32, `${station.icon} ${t(station.nameKey)}`, {
+        fontFamily: 'system-ui, sans-serif',
+        fontSize: '10px',
+        fontStyle: 'bold',
+        color: isLeft ? '#38BDF8' : '#FBBF24',
+        stroke: '#0F172A',
+        strokeThickness: 3,
+      }).setOrigin(0.5).setDepth(15);
+      station.nameText = name;
+
+      const badge = this.add.text(station.x, station.y + 32, `${Math.round(station.currentPrice)} ${t('aerialMarket.livePriceUnit')} ${station.trend === 'up' ? '↗' : '↘'}`, {
+        fontFamily: 'monospace',
+        fontSize: '11px',
+        fontStyle: 'bold',
+        color: station.trend === 'up' ? '#34D399' : '#F87171',
+        backgroundColor: '#0F172AEE',
+        padding: { x: 5, y: 2 },
+      }).setOrigin(0.5).setDepth(15);
+      station.priceBadgeText = badge;
+    });
+  }
+
+  /**
+   * Updates floating bobbing, dynamic price fluctuations, and continuous pipeline sales
+   */
+  private updateAerialMarket(dt: number): void {
+    const gs = GameState.getInstance();
+    this.lastSaleChimeTimer = Math.max(0, this.lastSaleChimeTimer - dt);
+
+    for (const station of this.aerialStations) {
+      // 1. Gentle floating bob
+      station.y = station.baseY + Math.sin(this.timeElapsed * 1.6 + (station.id === 'aero' ? 0 : 2.2)) * 4;
+      station.dockY = station.y + 8;
+      if (station.nameText) {
+        station.nameText.setPosition(station.x, station.y - 32);
+      }
+      if (station.priceBadgeText) {
+        station.priceBadgeText.setPosition(station.x, station.y + 32);
+      }
+
+      // 2. Dynamic live price fluctuation
+      station.priceTimer += dt;
+      if (station.priceTimer >= 8.0) {
+        station.priceTimer = 0;
+        station.previousPrice = station.currentPrice;
+        const delta = (Math.random() > 0.48 ? 1 : -1) * (1 + Math.floor(Math.random() * 2));
+        station.currentPrice = Phaser.Math.Clamp(station.currentPrice + delta, 8, 28);
+        station.trend = station.currentPrice > station.previousPrice ? 'up' : station.currentPrice < station.previousPrice ? 'down' : 'steady';
+
+        const trendSymbol = station.trend === 'up' ? '↗' : station.trend === 'down' ? '↘' : '→';
+        const trendColor = station.trend === 'up' ? '#34D399' : station.trend === 'down' ? '#F87171' : '#38BDF8';
+        station.priceBadgeText?.setText(`${Math.round(station.currentPrice)} ${t('aerialMarket.livePriceUnit')} ${trendSymbol}`);
+        station.priceBadgeText?.setColor(trendColor);
+      }
+    }
+
+    // 3. Continuous Pipe Selling through connected pipelines
+    const totalStored = gs.getTotalStored();
+    if (totalStored > 0) {
+      for (const pipe of this.customPipes) {
+        const stationId = pipe.targetStationId ?? pipe.sourceStationId;
+        if (!stationId) continue;
+        const station = this.aerialStations.find((s) => s.id === stationId);
+        if (!station) continue;
+
+        // Active pipe transfer: ~4 units per second
+        const transfer = Math.min(gs.getTotalStored(), 4.0 * dt);
+        if (transfer <= 0) continue;
+
+        const inv = gs.getData().inventory;
+        let rem = transfer;
+        if (inv.skywater > 0) {
+          const take = Math.min(inv.skywater, rem);
+          inv.skywater -= take;
+          rem -= take;
+        }
+        if (rem > 0 && inv.frost > 0) {
+          const take = Math.min(inv.frost, rem);
+          inv.frost -= take;
+          rem -= take;
+        }
+        if (rem > 0 && inv.storm > 0) {
+          const take = Math.min(inv.storm, rem);
+          inv.storm -= take;
+          rem -= take;
+        }
+
+        const earnings = transfer * station.currentPrice;
+        this.stationCreditAccumulator[stationId] += earnings;
+
+        if (this.stationCreditAccumulator[stationId] >= 1.0) {
+          const addCr = Math.floor(this.stationCreditAccumulator[stationId]);
+          gs.addCredits(addCr);
+          this.stationCreditAccumulator[stationId] -= addCr;
+          this.updateCreditsDisplay();
+          this.updateTankDisplay();
+
+          if (this.lastSaleChimeTimer <= 0) {
+            this.lastSaleChimeTimer = 0.55;
+            AudioManager.getInstance().playExtractDrop();
+          }
+
+          if (Math.random() < 0.25) {
+            this.spawnFloatingCreditText(station.dockX, station.y - 18, `+${Math.round(station.currentPrice)} CR`);
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Renders the two Aerial Trade Station zeppelins
+   */
+  private renderAerialStations(): void {
+    if (!this.aerialStationsGraphics) return;
+    this.aerialStationsGraphics.clear();
+
+    for (const station of this.aerialStations) {
+      const isLeft = station.id === 'aero';
+      const isConnected = this.customPipes.some((p) => p.targetStationId === station.id || p.sourceStationId === station.id);
+
+      // Main Blimp / Airship Hull
+      this.aerialStationsGraphics.fillStyle(0x0F172A, 0.94);
+      this.aerialStationsGraphics.fillRoundedRect(station.x - 36, station.y - 18, 72, 36, 16);
+
+      // Distinctive color stripe
+      this.aerialStationsGraphics.fillStyle(isLeft ? 0x0891B2 : 0xD97706, 0.85);
+      this.aerialStationsGraphics.fillRoundedRect(station.x - 30, station.y - 6, 60, 12, 5);
+
+      // Hull contour stroke
+      this.aerialStationsGraphics.lineStyle(1.8, isLeft ? 0x38BDF8 : 0xFBBF24, 0.95);
+      this.aerialStationsGraphics.strokeRoundedRect(station.x - 36, station.y - 18, 72, 36, 16);
+
+      // Underbelly Gondola Cabin
+      this.aerialStationsGraphics.fillStyle(0x1E293B, 0.95);
+      this.aerialStationsGraphics.fillRoundedRect(station.x - 18, station.y + 14, 36, 12, 3);
+      this.aerialStationsGraphics.lineStyle(1.2, 0xF59E0B, 0.9);
+      this.aerialStationsGraphics.strokeRoundedRect(station.x - 18, station.y + 14, 36, 12, 3);
+
+      // Rotating Propeller
+      const propAngle = this.timeElapsed * 14;
+      const propLen = 10;
+      const propBaseX = isLeft ? station.x - 37 : station.x + 37;
+      const p1y = station.y + Math.sin(propAngle) * propLen;
+      const p2y = station.y - Math.sin(propAngle) * propLen;
+      this.aerialStationsGraphics.lineStyle(1.5, 0x94A3B8, 0.85);
+      this.aerialStationsGraphics.lineBetween(propBaseX, p1y, propBaseX, p2y);
+
+      // Top Beacon Light
+      const beaconAlpha = 0.5 + Math.sin(this.timeElapsed * 6) * 0.5;
+      this.aerialStationsGraphics.fillStyle(isLeft ? 0x38BDF8 : 0xFBBF24, beaconAlpha);
+      this.aerialStationsGraphics.fillCircle(station.x, station.y - 20, 3);
+
+      // Docking Port Valve
+      if (isConnected) {
+        this.aerialStationsGraphics.fillStyle(0x34D399, 0.35 + Math.sin(this.timeElapsed * 6) * 0.2);
+        this.aerialStationsGraphics.fillCircle(station.dockX, station.dockY, 10);
+      }
+      this.aerialStationsGraphics.lineStyle(2, isLeft ? 0x38BDF8 : 0xFBBF24, 1.0);
+      this.aerialStationsGraphics.strokeCircle(station.dockX, station.dockY, 6);
+      this.aerialStationsGraphics.fillStyle(0xF59E0B, 1.0);
+      this.aerialStationsGraphics.fillCircle(station.dockX, station.dockY, 4);
+    }
+  }
+
+  public spawnFloatingCreditText(x: number, y: number, text: string): void {
+    const floating = this.add.text(x, y, text, {
+      fontFamily: 'monospace',
+      fontSize: '12px',
+      fontStyle: 'bold',
+      color: '#34D399',
+      stroke: '#0F172A',
+      strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(20);
+
+    if (this.tweens) {
+      this.tweens.add({
+        targets: floating,
+        y: y - 22,
+        alpha: 0,
+        duration: 850,
+        ease: 'Quad.easeOut',
+        onComplete: () => {
+          floating.destroy();
+        },
+      });
+    } else {
+      setTimeout(() => floating.destroy(), 850);
+    }
+  }
+
+  public getAerialStations(): ReadonlyArray<AerialTradeStation> {
+    return this.aerialStations;
+  }
+
+  public getScanGuideBannerVisible(): boolean {
+    return this.scanGuideContainer?.visible ?? false;
+  }
+
+  public getScanGuideBannerText(): string {
+    return this.scanGuideText?.text ?? '';
+  }
+
+  public getProbePosition(): { x: number; y: number } {
+    return { x: this.probeCurrentX, y: this.probeCurrentY };
+  }
+
+  /**
+   * Renders zone-specific physical layer challenges and Bohrkopf feedback
+   */
+  private renderLayerDrillFeedback(currentZone: ZoneType, isMatching: boolean, _dt: number): void {
+    const px = this.probeCurrentX;
+    const py = this.probeCurrentY + 16;
+
+    if (currentZone === 'high') {
+      // Hochzone (Eis)
+      if (isMatching) {
+        // Eisbohrer: zerspringende Eispartikel mit Crack-Effekt
+        this.cuttingEmitter.setParticleTint(0xE0F2FE);
+        this.cuttingEmitter.emitParticleAt(px, py, 2);
+
+        this.fxGraphics.lineStyle(1.5, 0xBAE6FD, 0.75);
+        const crackAngle = Math.random() * Math.PI * 2;
+        this.fxGraphics.lineBetween(px, py, px + Math.cos(crackAngle) * 14, py + Math.sin(crackAngle) * 14);
+        this.fxGraphics.lineBetween(px, py, px + Math.cos(crackAngle + 1.8) * 10, py + Math.sin(crackAngle + 1.8) * 10);
+      } else {
+        // Falscher Bohrkopf: Abprall-Funken mit Banner
+        this.fxGraphics.fillStyle(0xFB923C, 0.9);
+        for (let i = 0; i < 3; i++) {
+          const sx = px + (Math.random() - 0.5) * 18;
+          const sy = py - Math.random() * 12;
+          this.fxGraphics.fillCircle(sx, sy, 2);
+        }
+        this.triggerResistanceBanner('ice', this.probeCurrentY);
+      }
+    } else if (currentZone === 'mid') {
+      // Mittelzone (Skywater)
+      if (isMatching) {
+        // Nebelfänger: blauer Kondensationskegel
+        this.fxGraphics.fillStyle(0x38BDF8, 0.22);
+        this.fxGraphics.fillTriangle(px - 14, py - 18, px + 14, py - 18, px, py + 8);
+        this.fxGraphics.lineStyle(1.2, 0x60A5FA, 0.65);
+        this.fxGraphics.strokeTriangle(px - 14, py - 18, px + 14, py - 18, px, py + 8);
+      } else {
+        // Falscher Bohrkopf: Nebel-Verwirbelung mit Banner
+        this.fxGraphics.fillStyle(0x94A3B8, 0.4);
+        this.fxGraphics.fillCircle(px + (Math.random() - 0.5) * 22, py + (Math.random() - 0.5) * 12, 4);
+        this.triggerResistanceBanner('fog', this.probeCurrentY);
+      }
+    } else {
+      // Tiefzone (Sturm)
+      if (isMatching) {
+        // Ladungsspitze: erdet Ladung sauber mit Gold-Glow
+        this.fxGraphics.fillStyle(0xFBBF24, 0.25);
+        this.fxGraphics.fillCircle(px, py, 18);
+        this.fxGraphics.lineStyle(1.5, 0xFDE047, 0.8);
+        this.fxGraphics.strokeCircle(px, py, 14 + Math.sin(this.timeElapsed * 15) * 4);
+      } else {
+        // Falscher Bohrkopf: elektrische Überschlag-Funken mit Banner
+        this.fxGraphics.lineStyle(1.8, 0xC084FC, 0.95);
+        const arcX = px + (Math.random() - 0.5) * 26;
+        const arcY = py + (Math.random() - 0.5) * 20;
+        this.fxGraphics.lineBetween(px, py, arcX, arcY);
+        this.fxGraphics.fillStyle(0xFDE047, 0.9);
+        this.fxGraphics.fillCircle(arcX, arcY, 2.5);
+        this.triggerResistanceBanner('charge', this.probeCurrentY);
+      }
+    }
+  }
+
+  private triggerResistanceBanner(zone: 'ice' | 'fog' | 'charge', yPos: number): void {
+    if (this.lastResistanceBannerTimer <= 0 || this.lastResistanceZone !== zone) {
+      this.lastResistanceBannerTimer = 3.5;
+      this.lastResistanceZone = zone;
+      AudioManager.getInstance().playTensionRise();
+      let bannerText = '';
+      let textColor = '#FCA5A5';
+      let bgColor = '#450A0ACC';
+      if (zone === 'ice') {
+        bannerText = `⚠️ ${t('layerChallenge.iceResistance')}`;
+      } else if (zone === 'fog') {
+        bannerText = `⚠️ ${t('layerChallenge.fogResistance')}`;
+        textColor = '#93C5FD';
+        bgColor = '#1E293BEE';
+      } else {
+        bannerText = `⚡ ${t('layerChallenge.chargeResistance')}`;
+        textColor = '#FDE047';
+        bgColor = '#451A03EE';
+      }
+      this.showScanBanner(bannerText, yPos, textColor, bgColor);
+    }
+  }
+
+  /**
+   * Creates the elegant Zonen-Herausforderungs-Anzeige pinned to left edge
+   */
+  private createZoneChallengeHUD(_width: number, _height: number): void {
+    if (this.zoneChallengeContainer) {
+      this.zoneChallengeContainer.destroy();
+    }
+    this.zoneChallengeContainer = this.add.container(16, 115).setDepth(26);
+
+    this.zoneChallengeCardBg = this.add.graphics();
+    this.zoneChallengeContainer.add(this.zoneChallengeCardBg);
+
+    this.zoneChallengeTitleText = this.add.text(10, 8, '', {
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: '#7DD3FC',
+    });
+    this.zoneChallengeContainer.add(this.zoneChallengeTitleText);
+
+    this.zoneChallengeDensityText = this.add.text(118, 8, '', {
+      fontFamily: 'monospace',
+      fontSize: '10px',
+      color: '#94A3B8',
+    });
+    this.zoneChallengeContainer.add(this.zoneChallengeDensityText);
+
+    this.zoneChallengeHeadText = this.add.text(10, 26, '', {
+      fontFamily: 'system-ui, sans-serif',
+      fontSize: '10px',
+      color: '#E2E8F0',
+    });
+    this.zoneChallengeContainer.add(this.zoneChallengeHeadText);
+
+    this.zoneChallengeStatusText = this.add.text(10, 44, '', {
+      fontFamily: 'monospace',
+      fontSize: '9px',
+      fontStyle: 'bold',
+      padding: { x: 4, y: 1 },
+    });
+    this.zoneChallengeContainer.add(this.zoneChallengeStatusText);
+
+    this.zoneChallengeDepthText = this.add.text(118, 44, '', {
+      fontFamily: 'monospace',
+      fontSize: '9px',
+      color: '#64748B',
+    });
+    this.zoneChallengeContainer.add(this.zoneChallengeDepthText);
+
+    this.updateZoneChallengeHUD();
+  }
+
+  /**
+   * Updates real-time feedback in Zone Challenge HUD based on current probe depth
+   */
+  private updateZoneChallengeHUD(): void {
+    if (!this.zoneChallengeContainer || !this.cloudGrid) return;
+
+    const currentZone = this.cloudGrid.getZoneAtWorldY(this.probeCurrentY);
+    const isMatching = ProbePhysics.isMatchingHead(this.activeDrillHead, currentZone);
+    const rawDensity = this.cloudGrid.getEffectiveDensityAt(this.probeCurrentX, this.probeCurrentY);
+    const densityPercent = Math.round(rawDensity * 100);
+
+    let zoneTitle = '';
+    let accentColor = 0x38BDF8;
+    let recommendedHeadStr = '';
+
+    if (currentZone === 'high') {
+      zoneTitle = `❄ ${t('zones.highShort').toUpperCase()} (EIS)`;
+      accentColor = 0x38BDF8;
+      recommendedHeadStr = `❄ ${t('toolbar.drillHeadIce') || 'Eisbohrer'}`;
+    } else if (currentZone === 'mid') {
+      zoneTitle = `💧 ${t('zones.midShort').toUpperCase()} (WASSER)`;
+      accentColor = 0x60A5FA;
+      recommendedHeadStr = `💧 ${t('toolbar.drillHeadFog') || 'Nebelfänger'}`;
+    } else {
+      zoneTitle = `⚡ ${t('zones.lowShort').toUpperCase()} (STURM)`;
+      accentColor = 0xF472B6;
+      recommendedHeadStr = `⚡ ${t('toolbar.drillHeadCharge') || 'Ladungsspitze'}`;
+    }
+
+    this.zoneChallengeCardBg.clear();
+    this.zoneChallengeCardBg.fillStyle(0x0F172A, 0.88);
+    this.zoneChallengeCardBg.fillRoundedRect(0, 0, 184, 64, 8);
+    this.zoneChallengeCardBg.lineStyle(1.5, accentColor, 0.8);
+    this.zoneChallengeCardBg.strokeRoundedRect(0, 0, 184, 64, 8);
+
+    this.zoneChallengeTitleText.setText(zoneTitle);
+    this.zoneChallengeTitleText.setColor(currentZone === 'high' ? '#7DD3FC' : currentZone === 'mid' ? '#93C5FD' : '#F472B6');
+
+    this.zoneChallengeDensityText.setText(`${t('layerChallenge.density')}: ${densityPercent}%`);
+    this.zoneChallengeHeadText.setText(`${t('layerChallenge.recommended')}: ${recommendedHeadStr}`);
+
+    if (isMatching) {
+      this.zoneChallengeStatusText.setText(t('layerChallenge.statusOptimal'));
+      this.zoneChallengeStatusText.setColor('#4ADE80');
+      this.zoneChallengeStatusText.setBackgroundColor('#064E3B');
+    } else {
+      this.zoneChallengeStatusText.setText(t('layerChallenge.statusPenalty'));
+      this.zoneChallengeStatusText.setColor('#F59E0B');
+      this.zoneChallengeStatusText.setBackgroundColor('#78350F');
+    }
+
+    this.zoneChallengeDepthText.setText(`${Math.round(this.probeCurrentY)}m`);
+  }
+
+  public getZoneChallengeHUDState(): {
+    zone: ZoneType;
+    density: number;
+    recommendedHead: DrillHeadType;
+    isMatching: boolean;
+    statusText: string;
+    depth: number;
+  } {
+    const currentZone = this.cloudGrid ? this.cloudGrid.getZoneAtWorldY(this.probeCurrentY) : 'high';
+    const density = this.cloudGrid ? Math.round(this.cloudGrid.getEffectiveDensityAt(this.probeCurrentX, this.probeCurrentY) * 100) : 25;
+    const isMatching = ProbePhysics.isMatchingHead(this.activeDrillHead, currentZone);
+    const recommendedHead: DrillHeadType = currentZone === 'high' ? 'ice' : currentZone === 'mid' ? 'fog' : 'charge';
+    const statusText = isMatching ? t('layerChallenge.statusOptimal') : t('layerChallenge.statusPenalty');
+    return {
+      zone: currentZone,
+      density,
+      recommendedHead,
+      isMatching,
+      statusText,
+      depth: Math.round(this.probeCurrentY),
+    };
   }
 }

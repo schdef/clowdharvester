@@ -257,6 +257,7 @@ export class HarborModal {
     totalUnits: number,
     totalEstValue: number
   ): string {
+    const market = GameState.getInstance().getMarketEconomy();
     const commodities: Array<{
       id: ResourceType;
       name: string;
@@ -272,7 +273,7 @@ export class HarborModal {
         name: t('zones.resourceHigh'),
         units: frostUnits,
         price: frostPrice,
-        basePrice: 25,
+        basePrice: market.getBasePrice('frost'),
         icon: '❄️',
         color: ColorPalette.highZone.turquoiseCrystal,
         zoneText: t('zones.highFull'),
@@ -282,7 +283,7 @@ export class HarborModal {
         name: t('zones.resourceMid'),
         units: skywaterUnits,
         price: skywaterPrice,
-        basePrice: 10,
+        basePrice: market.getBasePrice('skywater'),
         icon: '💧',
         color: ColorPalette.midZone.condensateDrop,
         zoneText: t('zones.midFull'),
@@ -292,7 +293,7 @@ export class HarborModal {
         name: t('zones.resourceLow'),
         units: stormUnits,
         price: stormPrice,
-        basePrice: 18,
+        basePrice: market.getBasePrice('storm'),
         icon: '⚡',
         color: ColorPalette.lowZone.glowGold,
         zoneText: t('zones.lowFull'),

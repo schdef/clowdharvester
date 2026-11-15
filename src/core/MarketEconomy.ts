@@ -16,9 +16,9 @@ export class MarketEconomy {
   public static readonly EVAPORATION_RATE = 0.02; // 2% per week
 
   private rates: Record<ResourceType, MarketRate> = {
-    frost: { resource: 'frost', basePrice: 25, currentPrice: 25, priceHistory: [25] },
-    skywater: { resource: 'skywater', basePrice: 10, currentPrice: 10, priceHistory: [10] },
-    storm: { resource: 'storm', basePrice: 18, currentPrice: 18, priceHistory: [18] },
+    frost: { resource: 'frost', basePrice: 10, currentPrice: 10, priceHistory: [10] },
+    skywater: { resource: 'skywater', basePrice: 22, currentPrice: 22, priceHistory: [22] },
+    storm: { resource: 'storm', basePrice: 40, currentPrice: 40, priceHistory: [40] },
   };
 
   public getRate(resource: ResourceType): MarketRate {
@@ -72,11 +72,11 @@ export class MarketEconomy {
   }
 
   public resetRates(): void {
-    this.rates.frost.currentPrice = 25;
-    this.rates.frost.priceHistory = [25];
-    this.rates.skywater.currentPrice = 10;
-    this.rates.skywater.priceHistory = [10];
-    this.rates.storm.currentPrice = 18;
-    this.rates.storm.priceHistory = [18];
+    this.rates.frost.currentPrice = 10;
+    this.rates.frost.priceHistory = [10];
+    this.rates.skywater.currentPrice = 22;
+    this.rates.skywater.priceHistory = [22];
+    this.rates.storm.currentPrice = 40;
+    this.rates.storm.priceHistory = [40];
   }
 }

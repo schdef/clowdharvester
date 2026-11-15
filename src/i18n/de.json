@@ -15,7 +15,11 @@
     "help": "HILFE",
     "radar": "RADAR",
     "market": "BÖRSE",
-    "council": "COUNCIL"
+    "council": "COUNCIL",
+    "modeSolo": "Eigener Sektor",
+    "modeSoloDesc": "Standard: Privater Ernte-Sektor ohne störende KI-Rivalen",
+    "modeArena": "Geteilte Arena",
+    "modeArenaDesc": "Herausforderung: Geteilte Arena mit fairen KI-Rivalen"
   },
   "zones": {
     "zone": "Zone",
@@ -127,7 +131,11 @@
     "spectralFound": "🔬 Spektralscan: Vorkommen analysiert!",
     "spectralEmpty": "🔬 Spektralscan: Keine Vorkommen im Scan-Radius",
     "notEnoughCredits": "Nicht genügend Credits!",
-    "blindDiscovery": "🎉 Volltreffer! Verdecktes Vorkommen entdeckt!"
+    "blindDiscovery": "🎉 Volltreffer! Verdecktes Vorkommen entdeckt!",
+    "scanGuideBanner": "📡 Klicke in die Wolkendecke zum Scannen (50 CR)",
+    "scanGuideBannerWind": "📡 Klicke in die Wolkendecke zum Scannen (50 CR)",
+    "scanGuideBannerDrone": "🚁 Klicke in die Wolkendecke zum Scannen (150 CR)",
+    "scanGuideBannerSpectral": "🔬 Klicke in die Wolkendecke zum Scannen (400 CR)"
   },
   "radar": {
     "title": "4-Wochen-Windradar",
@@ -423,5 +431,39 @@
     "relocated": "⚓ Plattform umgesetzt! (-50 CR)",
     "notEnoughCreditsRelocate": "⚠️ Nicht genug Credits zum Umsetzen (50 CR)!",
     "replenished": "☁️ Frisches Wolkenband erreicht! Woche"
+  },
+  "aerialMarket": {
+    "aeroSyndicate": "Aero-Syndikat",
+    "skyGuild": "Sky-Gilde",
+    "stationDocked": "🔗 Pipeline an Station angeschlossen!",
+    "livePriceUnit": "CR/E",
+    "sellingTooltip": "Verkauft kontinuierlich Kondensat",
+    "soldFloating": "+{cr} CR",
+    "connectingHint": "Station anvisiert"
+  },
+  "profile": {
+    "title": "Pilotenprofil",
+    "subtitle": "Passe deinen Rufnamen für den Sky-Council und das Leaderboard an.",
+    "nameLabel": "Piloten-Rufname",
+    "placeholder": "z.B. Captain Sky",
+    "infoText": "Dieser Name repräsentiert dich im Sky-Council, in den Expeditionsberichten und in der Saison-Rangliste.",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "errorEmpty": "Bitte gib einen Namen ein.",
+    "errorLength": "Maximal 18 Zeichen erlaubt."
+  },
+  "layerChallenge": {
+    "title": "Zonen-Herausforderung",
+    "density": "Dichte",
+    "recommended": "Bohrkopf",
+    "statusOptimal": "✓ OPTIMAL",
+    "statusPenalty": "⚠️ 50% BREMSUNG",
+    "iceResistance": "EISKRUSTEN-WIDERSTAND (50% Bremsung)",
+    "fogResistance": "NEBEL-VERWIRBELUNG (50% Bremsung)",
+    "chargeResistance": "HOCHSPANNUNGS-WIDERSTAND (50% Bremsung)"
+  },
+  "drone": {
+    "scanning": "Scanne Wolkenschicht...",
+    "pocketFound": "Vorkommen geortet!"
   }
 }

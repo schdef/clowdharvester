@@ -22,6 +22,8 @@ export interface UpgradeState {
   droneLevel: number;
 }
 
+export type GameMode = 'solo' | 'arena';
+
 export interface GameStateData {
   season: number;
   week: number;
@@ -39,6 +41,8 @@ export interface GameStateData {
   inventory: InventoryState;
   upgrades: UpgradeState;
   bonusStorage?: number;
+  playerName?: string;
+  gameMode?: GameMode;
 }
 
 const STORAGE_KEY = 'cloud_harvesters_gamestate_v2';
@@ -78,10 +82,12 @@ export class GameState {
         droneLevel: 1,
       },
       bonusStorage: 0,
+      playerName: 'Captain Sky',
+      gameMode: 'solo',
     };
 
-    // Ensure council engine matches loaded credits
-    this.councilEngine = new CouncilEngine(this.data.credits);
+    // Ensure council engine matches loaded credits and player name
+    this.councilEngine = new CouncilEngine(this.data.credits, this.data.playerName || 'Captain Sky');
     this.syncCouncilState();
   }
 
@@ -153,6 +159,26 @@ export class GameState {
 
   public setRegion(region: CampaignRegion): void {
     this.data.region = region;
+    this.saveState();
+  }
+
+  public getPlayerName(): string {
+    return this.data.playerName || 'Captain Sky';
+  }
+
+  public setPlayerName(name: string): void {
+    const trimmed = (name || '').trim();
+    this.data.playerName = trimmed || 'Captain Sky';
+    this.councilEngine.setPlayerName(this.data.playerName);
+    this.saveState();
+  }
+
+  public getGameMode(): GameMode {
+    return this.data.gameMode || 'solo';
+  }
+
+  public setGameMode(mode: GameMode): void {
+    this.data.gameMode = mode;
     this.saveState();
   }
 
@@ -397,6 +423,7 @@ export class GameState {
   private syncCouncilState(): void {
     const player = this.councilEngine.getBidder('player');
     if (player) {
+      player.name = this.getPlayerName();
       player.credits = this.data.credits;
       player.sharesWon = this.data.councilShares - this.data.auroraShares;
       player.auroraShares = this.data.auroraShares;
@@ -426,6 +453,8 @@ export class GameState {
         parsed.gameSpeed = parsed.gameSpeed ?? 1.0;
         parsed.weekTimer = parsed.weekTimer ?? 0.0;
         parsed.region = parsed.region ?? GameState.getRegionForSeason(parsed.season ?? 1);
+        parsed.playerName = parsed.playerName ?? 'Captain Sky';
+        parsed.gameMode = parsed.gameMode ?? 'solo';
         return parsed;
       }
     } catch {

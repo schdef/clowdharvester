@@ -11,6 +11,7 @@ import { TutorialModal } from './ui/TutorialModal';
 import { HarborModal } from './ui/HarborModal';
 import { CouncilModal } from './ui/CouncilModal';
 import { SummaryModal } from './ui/SummaryModal';
+import { PilotModal } from './ui/PilotModal';
 import { AudioManager } from './audio/AudioManager';
 import { getLanguage, setLanguage, t, onLanguageChange } from './i18n/i18n';
 import { GameState } from './core/GameState';
@@ -50,6 +51,9 @@ const tutorialModal = TutorialModal.getInstance();
 const harborModal = HarborModal.getInstance();
 const councilModal = CouncilModal.getInstance();
 const summaryModal = SummaryModal.getInstance();
+const pilotModal = PilotModal.getInstance();
+
+let phaserGameInstance: Phaser.Game | null = null;
 
 // Mount UI Shell Components
 function initUI(): void {
@@ -88,6 +92,39 @@ function initUI(): void {
   const summaryContainer = document.getElementById('summary-modal-container');
   if (summaryContainer) {
     summaryModal.mount(summaryContainer);
+  }
+
+  const pilotContainer = document.getElementById('pilot-modal-container');
+  if (pilotContainer) {
+    pilotModal.mount(pilotContainer);
+  }
+
+  // Setup Pilot Profile Button
+  const pilotProfileBtn = document.getElementById('btn-pilot-profile');
+  if (pilotProfileBtn) {
+    pilotProfileBtn.addEventListener('click', () => {
+      AudioManager.getInstance().playUiClick();
+      pilotModal.open();
+    });
+  }
+
+  // Setup Game Mode Switcher Button (Solo Sector vs Shared Arena)
+  const modeBtn = document.getElementById('btn-mode-toggle');
+  if (modeBtn) {
+    modeBtn.addEventListener('click', () => {
+      AudioManager.getInstance().playUiClick();
+      const currentMode = GameState.getInstance().getGameMode();
+      const nextMode = currentMode === 'solo' ? 'arena' : 'solo';
+      GameState.getInstance().setGameMode(nextMode);
+      updateHeaderLabels();
+      if (phaserGameInstance) {
+        phaserGameInstance.events.emit('gamemode:change', nextMode);
+        const scene = phaserGameInstance.scene.getScene('SkyHarvestScene') as SkyHarvestScene | undefined;
+        if (scene && typeof scene.setGameMode === 'function') {
+          scene.setGameMode(nextMode);
+        }
+      }
+    });
   }
 
   // Setup Tutorial Button
@@ -150,6 +187,10 @@ function initUI(): void {
     const councilBadgeEl = document.getElementById('header-council-badge');
     const helpLabelEl = document.getElementById('header-help-label');
     const langBtn = document.getElementById('btn-lang-toggle');
+    const pilotNameEl = document.getElementById('header-pilot-name');
+    const modeIconEl = document.getElementById('header-mode-icon');
+    const modeLabelEl = document.getElementById('header-mode-label');
+    const modeBtnEl = document.getElementById('btn-mode-toggle');
 
     const gs = GameState.getInstance().getData();
     if (seasonEl) seasonEl.textContent = `${t('header.season')} ${gs.season}`;
@@ -160,7 +201,17 @@ function initUI(): void {
     if (councilBadgeEl) councilBadgeEl.textContent = `${gs.councilShares}/30`;
     if (helpLabelEl) helpLabelEl.textContent = t('header.help');
     if (langBtn) langBtn.textContent = getLanguage().toUpperCase();
+    if (pilotNameEl) pilotNameEl.textContent = gs.playerName || 'Captain Sky';
+
+    const isSolo = (gs.gameMode ?? 'solo') === 'solo';
+    if (modeIconEl) modeIconEl.textContent = isSolo ? '🛡️' : '⚔️';
+    if (modeLabelEl) modeLabelEl.textContent = isSolo ? t('header.modeSolo') : t('header.modeArena');
+    if (modeBtnEl) {
+      modeBtnEl.title = isSolo ? t('header.modeSoloDesc') : t('header.modeArenaDesc');
+    }
   };
+
+  pilotModal.onNameChange(() => updateHeaderLabels());
 
   onLanguageChange(updateHeaderLabels);
   updateHeaderLabels();
@@ -189,6 +240,7 @@ const phaserConfig: Phaser.Types.Core.GameConfig = {
 document.addEventListener('DOMContentLoaded', () => {
   initUI();
   const game = new Phaser.Game(phaserConfig);
+  phaserGameInstance = game;
 
   // Setup Auction Button to open/restart Auction Scene
   const auctionBtn = document.getElementById('btn-auction-toggle');
