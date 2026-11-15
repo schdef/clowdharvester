@@ -60,8 +60,8 @@ export class PilotModal {
     const currentName = GameState.getInstance().getPlayerName();
 
     this.containerElement.innerHTML = `
-      <div id="pilot-modal-backdrop" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in select-none">
-        <div class="relative w-full max-w-sm rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl p-5 flex flex-col space-y-4">
+      <div id="pilot-modal-backdrop" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in select-none pointer-events-auto">
+        <div class="relative w-full max-w-sm max-h-[88vh] overflow-y-auto rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl p-5 flex flex-col space-y-4">
           
           <!-- Header -->
           <div class="flex items-center justify-between border-b border-slate-800 pb-3">

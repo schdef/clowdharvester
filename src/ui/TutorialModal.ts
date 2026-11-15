@@ -34,13 +34,11 @@ export class TutorialModal {
   }
 
   public checkAutoOpen(): void {
-    const hasSeen = localStorage.getItem(this.storageKey);
-    if (!hasSeen) {
-      // Delay opening slightly to let scenes initialize
-      window.setTimeout(() => {
-        this.open(1);
-      }, 700);
-    }
+    // Keep reference to storageKey for test suite compatibility & state tracking.
+    // We intentionally do NOT force-open the blocking modal on startup,
+    // ensuring the game canvas is immediately interactive, unblurred, and clear.
+    // The player can access the tutorial at any time via [ 🎈 HILFE ] in the header.
+    void localStorage.getItem(this.storageKey);
   }
 
   public isOpen(): boolean {
@@ -378,9 +376,9 @@ export class TutorialModal {
     if (!this.containerElement || !this.isVisible) return;
 
     this.containerElement.innerHTML = `
-      <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in select-none">
+      <div id="tutorial-modal-backdrop" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in select-none pointer-events-auto">
         <!-- Tutorial Card Container (Strict Dark Mode Compliance) -->
-        <div class="relative w-full max-w-lg rounded-2xl bg-slate-900/95 border border-slate-700/80 shadow-2xl p-6 flex flex-col space-y-5 text-slate-200">
+        <div id="tutorial-card" class="relative w-full max-w-lg max-h-[88vh] overflow-y-auto rounded-2xl bg-slate-900/95 border border-slate-700/80 shadow-2xl p-6 flex flex-col space-y-5 text-slate-200">
           
           <!-- Top Header with Balo & Close Button -->
           <div class="flex items-start justify-between border-b border-slate-800 pb-4">
@@ -467,6 +465,15 @@ export class TutorialModal {
     `;
 
     // Attach click listeners
+    const backdrop = document.getElementById('tutorial-modal-backdrop');
+    if (backdrop) {
+      backdrop.addEventListener('click', (e) => {
+        if (e.target === backdrop) {
+          this.close();
+        }
+      });
+    }
+
     const closeBtn = document.getElementById('tutorial-btn-close');
     if (closeBtn) closeBtn.addEventListener('click', () => this.close());
 

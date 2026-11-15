@@ -76,8 +76,8 @@ export class SummaryModal {
     const nextRegion = GameState.getRegionForSeason(data.season + 1);
 
     this.containerElement.innerHTML = `
-      <div class="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 z-50 animate-fade-in font-mono">
-        <div class="w-full max-w-xl max-h-[92vh] flex flex-col bg-slate-900 border border-amber-500/80 rounded-xl shadow-2xl overflow-hidden">
+      <div id="summary-modal-backdrop" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 z-50 animate-fade-in font-mono pointer-events-auto">
+        <div id="summary-modal-card" class="w-full max-w-xl max-h-[88vh] overflow-y-auto flex flex-col bg-slate-900 border border-amber-500/80 rounded-xl shadow-2xl">
           
           <!-- Header Banner -->
           <div class="px-5 py-4 bg-gradient-to-r from-amber-950 via-slate-900 to-indigo-950 border-b border-amber-600/60 text-center">
@@ -176,6 +176,11 @@ export class SummaryModal {
         </div>
       </div>
     `;
+
+    const backdrop = document.getElementById('summary-modal-backdrop');
+    backdrop?.addEventListener('click', (e) => {
+      if (e.target === backdrop) this.close();
+    });
 
     document.getElementById('btn-start-next-season')?.addEventListener('click', () => {
       this.close();

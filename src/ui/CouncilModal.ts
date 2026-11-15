@@ -120,8 +120,8 @@ export class CouncilModal {
     const rankings = ce.calculateRankings(data.region);
 
     this.containerElement!.innerHTML = `
-      <div class="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 z-50 animate-fade-in font-mono">
-        <div class="w-full max-w-xl max-h-[92vh] flex flex-col bg-slate-900 border border-indigo-700/60 rounded-xl shadow-2xl overflow-hidden">
+      <div id="council-dossier-backdrop" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 z-50 animate-fade-in font-mono pointer-events-auto">
+        <div id="council-dossier-card" class="w-full max-w-xl max-h-[88vh] overflow-y-auto flex flex-col bg-slate-900 border border-indigo-700/60 rounded-xl shadow-2xl">
           
           <!-- Header -->
           <div class="px-4 py-3 bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 border-b border-indigo-800/60 flex items-center justify-between">
@@ -244,6 +244,11 @@ export class CouncilModal {
       </div>
     `;
 
+    const backdrop = document.getElementById('council-dossier-backdrop');
+    backdrop?.addEventListener('click', (e) => {
+      if (e.target === backdrop) this.close();
+    });
+
     document.getElementById('btn-council-close')?.addEventListener('click', () => this.close());
     document.getElementById('btn-council-dossier-close')?.addEventListener('click', () => this.close());
   }
@@ -262,8 +267,8 @@ export class CouncilModal {
     const isAffordable = totalCommitment <= playerCredits && totalCommitment > 0;
 
     this.containerElement!.innerHTML = `
-      <div class="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 z-50 animate-fade-in font-mono">
-        <div class="w-full max-w-xl max-h-[92vh] flex flex-col bg-slate-900 border border-indigo-600 rounded-xl shadow-2xl overflow-hidden">
+      <div id="council-bidding-backdrop" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 z-50 animate-fade-in font-mono pointer-events-auto">
+        <div id="council-bidding-card" class="w-full max-w-xl max-h-[88vh] overflow-y-auto flex flex-col bg-slate-900 border border-indigo-600 rounded-xl shadow-2xl">
           
           <!-- Header -->
           <div class="px-4 py-3 bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 border-b border-indigo-800/80 flex items-center justify-between">
@@ -431,6 +436,11 @@ export class CouncilModal {
       this.executeCouncilAuction();
     });
 
+    const backdrop = document.getElementById('council-bidding-backdrop');
+    backdrop?.addEventListener('click', (e) => {
+      if (e.target === backdrop) this.close();
+    });
+
     submitBtn?.addEventListener('click', () => {
       this.executeCouncilAuction();
     });
@@ -478,8 +488,8 @@ export class CouncilModal {
     if (!res) return;
 
     this.containerElement!.innerHTML = `
-      <div class="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in font-mono">
-        <div class="w-full max-w-md bg-slate-900 border border-amber-600/80 rounded-xl shadow-2xl p-6 text-center space-y-4">
+      <div class="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in font-mono pointer-events-auto">
+        <div class="w-full max-w-md max-h-[88vh] overflow-y-auto bg-slate-900 border border-amber-600/80 rounded-xl shadow-2xl p-6 text-center space-y-4">
           <div class="text-4xl animate-bounce">⚖️</div>
           <h2 class="text-lg font-bold text-amber-300 tracking-wider">${t('council.revealTitle')}</h2>
           <p class="text-xs text-slate-300">${t('council.revealingEnvelopes')}</p>
@@ -505,8 +515,8 @@ export class CouncilModal {
     const playerWon = (playerBid?.sharesWon ?? 0) > 0;
 
     this.containerElement!.innerHTML = `
-      <div class="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 z-50 animate-fade-in font-mono">
-        <div class="w-full max-w-xl max-h-[92vh] flex flex-col bg-slate-900 border border-emerald-600/80 rounded-xl shadow-2xl overflow-hidden">
+      <div id="council-results-backdrop" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 z-50 animate-fade-in font-mono pointer-events-auto">
+        <div id="council-results-card" class="w-full max-w-xl max-h-[88vh] overflow-y-auto flex flex-col bg-slate-900 border border-emerald-600/80 rounded-xl shadow-2xl">
           
           <!-- Header -->
           <div class="px-4 py-3 bg-gradient-to-r from-emerald-950 via-slate-900 to-indigo-950 border-b border-emerald-800/80 flex items-center justify-between">
@@ -609,6 +619,11 @@ export class CouncilModal {
         </div>
       </div>
     `;
+
+    const resultsBackdrop = document.getElementById('council-results-backdrop');
+    resultsBackdrop?.addEventListener('click', (e) => {
+      if (e.target === resultsBackdrop) this.close();
+    });
 
     document.getElementById('btn-to-summary')?.addEventListener('click', () => {
       this.close();

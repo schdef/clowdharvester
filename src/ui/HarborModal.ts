@@ -147,8 +147,8 @@ export class HarborModal {
     const totalEstValue = (frostUnits * frostPrice) + (skywaterUnits * skywaterPrice) + (stormUnits * stormPrice);
 
     this.containerElement.innerHTML = `
-      <div class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in select-none">
-        <div class="relative w-full max-w-2xl bg-slate-900 border border-slate-700/70 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div id="harbor-modal-backdrop" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in select-none pointer-events-auto">
+        <div id="harbor-modal-card" class="relative w-full max-w-2xl bg-slate-900 border border-slate-700/70 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh] overflow-y-auto">
           
           <!-- Top Header Bar -->
           <div class="px-5 py-4 border-b border-slate-800/80 bg-slate-900/90 flex items-center justify-between">
@@ -344,7 +344,7 @@ export class HarborModal {
                     ${!hasStock ? 'disabled' : ''}
                     class="px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                       hasStock
-                        ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md active:scale-95'
+                        ? 'bg-emerald-600 hover:bg-emerald-500 text-slate-100 shadow-md active:scale-95'
                         : 'bg-slate-800 text-slate-500 border border-slate-700/40 cursor-not-allowed opacity-50'
                     }"
                   >
@@ -540,6 +540,16 @@ export class HarborModal {
 
   private attachEventListeners(): void {
     if (!this.containerElement) return;
+
+    // Backdrop click dismiss
+    const backdrop = this.containerElement.querySelector('#harbor-modal-backdrop');
+    if (backdrop) {
+      backdrop.addEventListener('click', (e) => {
+        if (e.target === backdrop) {
+          this.close();
+        }
+      });
+    }
 
     // Close buttons
     const closeBtn = this.containerElement.querySelector('#btn-harbor-close');
